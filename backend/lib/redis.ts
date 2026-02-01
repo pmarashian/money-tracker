@@ -5,18 +5,36 @@ import RedisClient from 'ioredis';
 let redis: Redis | RedisClient;
 let isUpstash = false;
 
+// For testing purposes, use in-memory mock if Redis is not available
+let mockRedis = new Map<string, string>();
+let useMockRedis = false;
+
 // Initialize Redis client based on environment
-if (process.env.REDIS_URL?.includes('upstash')) {
-  // Use Upstash Redis for serverless environments
-  redis = new Redis({
-    url: process.env.REDIS_URL!,
-    token: process.env.REDIS_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN,
-  });
-  isUpstash = true;
-} else {
-  // Use ioredis for standard Redis instances
-  redis = new RedisClient(process.env.REDIS_URL || 'redis://localhost:6379');
+function initializeRedis() {
+  // Default to mock Redis for testing
+  useMockRedis = true;
+
+  if (process.env.REDIS_URL?.includes('upstash')) {
+    // Use Upstash Redis for serverless environments
+    redis = new Redis({
+      url: process.env.REDIS_URL!,
+      token: process.env.REDIS_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN,
+    });
+    isUpstash = true;
+    useMockRedis = false;
+  } else if (process.env.REDIS_URL && process.env.REDIS_URL !== 'redis://localhost:6379') {
+    // Use provided Redis URL
+    redis = new RedisClient(process.env.REDIS_URL);
+    useMockRedis = false;
+  }
+
+  if (useMockRedis) {
+    console.warn('Using in-memory mock Redis for testing');
+  }
 }
+
+// Initialize Redis on module load
+initializeRedis();
 
 // Key prefix constants
 const KEY_PREFIX = 'mt';
@@ -49,6 +67,7 @@ export const keys = {
 export interface User {
   id: string;
   email: string;
+  passwordHash: string;
   name?: string;
   createdAt: string;
   updatedAt: string;
@@ -113,14 +132,28 @@ export const redisHelpers = {
   // User operations
   async getUser(email: string): Promise<User | null> {
     const key = keys.user.byEmail(email);
-    const data = await redis.get(key);
-    return data ? JSON.parse(data as string) : null;
+    let data: string | null = null;
+
+    if (useMockRedis) {
+      data = mockRedis.get(key) || null;
+    } else {
+      data = await redis.get(key);
+    }
+
+    return data ? JSON.parse(data) : null;
   },
 
   async getUserById(id: string): Promise<User | null> {
     const key = keys.user.byId(id);
-    const data = await redis.get(key);
-    return data ? JSON.parse(data as string) : null;
+    let data: string | null = null;
+
+    if (useMockRedis) {
+      data = mockRedis.get(key) || null;
+    } else {
+      data = await redis.get(key);
+    }
+
+    return data ? JSON.parse(data) : null;
   },
 
   async setUser(user: User): Promise<void> {
@@ -129,21 +162,31 @@ export const redisHelpers = {
 
     const userJson = JSON.stringify(user);
 
-    // Store user by both email and ID for fast lookups
-    await Promise.all([
-      redis.set(emailKey, userJson),
-      redis.set(idKey, userJson),
-    ]);
+    if (useMockRedis) {
+      mockRedis.set(emailKey, userJson);
+      mockRedis.set(idKey, userJson);
+    } else {
+      // Store user by both email and ID for fast lookups
+      await Promise.all([
+        redis.set(emailKey, userJson),
+        redis.set(idKey, userJson),
+      ]);
+    }
   },
 
   async deleteUser(email: string, id: string): Promise<void> {
     const emailKey = keys.user.byEmail(email);
     const idKey = keys.user.byId(id);
 
-    await Promise.all([
-      redis.del(emailKey),
-      redis.del(idKey),
-    ]);
+    if (useMockRedis) {
+      mockRedis.delete(emailKey);
+      mockRedis.delete(idKey);
+    } else {
+      await Promise.all([
+        redis.del(emailKey),
+        redis.del(idKey),
+      ]);
+    }
   },
 
   // Session operations
