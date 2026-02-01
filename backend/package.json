@@ -9,6 +9,8 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@upstash/redis": "^1.36.1",
+    "ioredis": "^5.9.2",
     "next": "^14.0.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0"
@@ -21,7 +23,11 @@
     "eslint-config-next": "^14.0.0",
     "typescript": "^5.0.0"
   },
-  "keywords": ["api", "nextjs", "typescript"],
+  "keywords": [
+    "api",
+    "nextjs",
+    "typescript"
+  ],
   "author": "",
   "license": "ISC"
 }
