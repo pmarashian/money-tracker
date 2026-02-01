@@ -299,15 +299,29 @@ export const redisHelpers = {
   // Transaction operations
   async getUserTransactions(userId: string): Promise<Transaction[]> {
     const key = keys.transactions(userId);
-    const data = await redis.get(key);
-    return data ? JSON.parse(data as string) : [];
+    let data: string | null = null;
+
+    if (useMockRedis) {
+      data = await mockRedisOps.get(key);
+    } else {
+      data = await redis.get(key);
+    }
+
+    return data ? JSON.parse(data) : [];
   },
 
   async addUserTransaction(userId: string, transaction: Transaction): Promise<void> {
     const existing = await this.getUserTransactions(userId);
     const updated = [...existing, transaction];
     const key = keys.transactions(userId);
-    await redis.set(key, JSON.stringify(updated));
+
+    const transactionsJson = JSON.stringify(updated);
+
+    if (useMockRedis) {
+      await mockRedisOps.set(key, transactionsJson);
+    } else {
+      await redis.set(key, transactionsJson);
+    }
   },
 
   async updateUserTransaction(userId: string, transactionId: string, updates: Partial<Transaction>): Promise<void> {
@@ -320,14 +334,26 @@ export const redisHelpers = {
 
     existing[index] = { ...existing[index], ...updates, updatedAt: new Date().toISOString() };
     const key = keys.transactions(userId);
-    await redis.set(key, JSON.stringify(existing));
+    const transactionsJson = JSON.stringify(existing);
+
+    if (useMockRedis) {
+      await mockRedisOps.set(key, transactionsJson);
+    } else {
+      await redis.set(key, transactionsJson);
+    }
   },
 
   async deleteUserTransaction(userId: string, transactionId: string): Promise<void> {
     const existing = await this.getUserTransactions(userId);
     const filtered = existing.filter(t => t.id !== transactionId);
     const key = keys.transactions(userId);
-    await redis.set(key, JSON.stringify(filtered));
+    const transactionsJson = JSON.stringify(filtered);
+
+    if (useMockRedis) {
+      await mockRedisOps.set(key, transactionsJson);
+    } else {
+      await redis.set(key, transactionsJson);
+    }
   },
 
   // Recurring transaction operations
@@ -367,14 +393,26 @@ export const redisHelpers = {
   // Chat context operations
   async getUserChatContext(userId: string): Promise<ChatContext | null> {
     const key = keys.chat(userId);
-    const data = await redis.get(key);
-    return data ? JSON.parse(data as string) : null;
+    let data: string | null = null;
+
+    if (useMockRedis) {
+      data = await mockRedisOps.get(key);
+    } else {
+      data = await redis.get(key);
+    }
+
+    return data ? JSON.parse(data) : null;
   },
 
   async setUserChatContext(context: ChatContext): Promise<void> {
     const key = keys.chat(context.userId);
     const contextJson = JSON.stringify(context);
-    await redis.set(key, contextJson);
+
+    if (useMockRedis) {
+      await mockRedisOps.set(key, contextJson);
+    } else {
+      await redis.set(key, contextJson);
+    }
   },
 
   async addChatMessage(userId: string, message: ChatContext['messages'][0]): Promise<void> {
@@ -398,7 +436,12 @@ export const redisHelpers = {
 
   async clearUserChatContext(userId: string): Promise<void> {
     const key = keys.chat(userId);
-    await redis.del(key);
+
+    if (useMockRedis) {
+      await mockRedisOps.del(key);
+    } else {
+      await redis.del(key);
+    }
   },
 };
 

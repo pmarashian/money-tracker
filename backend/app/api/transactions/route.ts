@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { withAuth } from '../../../lib/auth';
+import { redisHelpers } from '../../../lib/redis';
 
 // Mock data for now - replace with database integration later
 const mockTransactions = [
@@ -20,14 +22,24 @@ const mockTransactions = [
   }
 ];
 
-export async function GET() {
+async function getTransactionsHandler(request: any): Promise<NextResponse> {
   try {
-    // TODO: Implement database queries
-    // For now, return mock data
+    // Get the user from authentication
+    const user = request.user;
+    if (!user || !user.id) {
+      return NextResponse.json(
+        { success: false, error: 'User not authenticated' },
+        { status: 401 }
+      );
+    }
+
+    // Get transactions from Redis
+    const transactions = await redisHelpers.getUserTransactions(user.id);
+
     return NextResponse.json({
       success: true,
-      data: mockTransactions,
-      count: mockTransactions.length
+      data: transactions,
+      count: transactions.length
     });
   } catch (error) {
     console.error('Error fetching transactions:', error);
@@ -38,8 +50,17 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+async function createTransactionHandler(request: any): Promise<NextResponse> {
   try {
+    // Get the user from authentication
+    const user = request.user;
+    if (!user || !user.id) {
+      return NextResponse.json(
+        { success: false, error: 'User not authenticated' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
 
     // Basic validation
@@ -50,12 +71,21 @@ export async function POST(request: Request) {
       );
     }
 
-    // TODO: Save to database
+    // Create transaction with user ID
     const newTransaction = {
-      id: Date.now().toString(),
-      ...body,
-      date: body.date || new Date().toISOString().split('T')[0]
+      id: `txn_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      userId: user.id,
+      amount: body.amount,
+      description: body.description,
+      category: body.category || 'Uncategorized',
+      date: body.date || new Date().toISOString().split('T')[0],
+      type: (body.amount >= 0 ? 'income' : 'expense') as 'income' | 'expense',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
+
+    // Save to Redis
+    await redisHelpers.addUserTransaction(user.id, newTransaction);
 
     return NextResponse.json({
       success: true,
@@ -69,3 +99,7 @@ export async function POST(request: Request) {
     );
   }
 }
+
+// Export protected handlers
+export const GET = withAuth(getTransactionsHandler);
+export const POST = withAuth(createTransactionHandler);
