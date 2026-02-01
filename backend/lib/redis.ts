@@ -88,6 +88,11 @@ export interface UserSettings {
     push: boolean;
   };
   currency: string;
+  // Financial settings
+  balance?: number;
+  paycheckAmount?: number;
+  nextBonusDate?: string; // ISO date string
+  bonusAmount?: number;
   updatedAt: string;
 }
 
@@ -259,14 +264,26 @@ export const redisHelpers = {
   // Settings operations
   async getUserSettings(userId: string): Promise<UserSettings | null> {
     const key = keys.settings(userId);
-    const data = await redis.get(key);
-    return data ? JSON.parse(data as string) : null;
+    let data: string | null = null;
+
+    if (useMockRedis) {
+      data = await mockRedisOps.get(key);
+    } else {
+      data = await redis.get(key);
+    }
+
+    return data ? JSON.parse(data) : null;
   },
 
   async setUserSettings(settings: UserSettings): Promise<void> {
     const key = keys.settings(settings.userId);
     const settingsJson = JSON.stringify(settings);
-    await redis.set(key, settingsJson);
+
+    if (useMockRedis) {
+      await mockRedisOps.set(key, settingsJson);
+    } else {
+      await redis.set(key, settingsJson);
+    }
   },
 
   async updateUserSettings(userId: string, updates: Partial<UserSettings>): Promise<void> {
