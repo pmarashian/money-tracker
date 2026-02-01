@@ -4,6 +4,8 @@ import { getSession, getUserById } from '@/lib/redis'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default-secret-key'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     let user = null
