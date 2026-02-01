@@ -29,8 +29,8 @@ export function LoginPage() {
       const data = await response.json()
 
       if (response.ok && data.success) {
-        // Success - redirect to home
-        router.push('/')
+        // Success - redirect to home tab
+        router.push('/(tabs)/home')
       } else {
         setError(data.message || 'Login failed')
       }
