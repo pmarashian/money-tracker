@@ -6,7 +6,7 @@ export interface User {
 
 export async function checkAuth(): Promise<User | null> {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/session`, {
+    const response = await fetch('/api/auth/session', {
       credentials: 'include',
     })
 
@@ -24,7 +24,7 @@ export async function checkAuth(): Promise<User | null> {
 
 export async function logout(): Promise<void> {
   try {
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/logout`, {
+    await fetch('/api/auth/logout', {
       method: 'POST',
       credentials: 'include',
     })
