@@ -127,6 +127,30 @@ export interface ChatContext {
   lastActivity: string;
 }
 
+// Mock Redis operations for testing
+const mockRedisOps = {
+  async get(key: string): Promise<string | null> {
+    return mockRedis.get(key) || null;
+  },
+
+  async set(key: string, value: string): Promise<void> {
+    mockRedis.set(key, value);
+  },
+
+  async setex(key: string, ttlSeconds: number, value: string): Promise<void> {
+    // For mock Redis, just store without TTL (TTL not implemented in Map)
+    mockRedis.set(key, value);
+  },
+
+  async del(key: string): Promise<void> {
+    mockRedis.delete(key);
+  },
+
+  async ping(): Promise<string> {
+    return 'PONG';
+  }
+};
+
 // Redis operation helpers
 export const redisHelpers = {
   // User operations
@@ -135,7 +159,7 @@ export const redisHelpers = {
     let data: string | null = null;
 
     if (useMockRedis) {
-      data = mockRedis.get(key) || null;
+      data = await mockRedisOps.get(key);
     } else {
       data = await redis.get(key);
     }
@@ -148,7 +172,7 @@ export const redisHelpers = {
     let data: string | null = null;
 
     if (useMockRedis) {
-      data = mockRedis.get(key) || null;
+      data = await mockRedisOps.get(key);
     } else {
       data = await redis.get(key);
     }
@@ -163,8 +187,8 @@ export const redisHelpers = {
     const userJson = JSON.stringify(user);
 
     if (useMockRedis) {
-      mockRedis.set(emailKey, userJson);
-      mockRedis.set(idKey, userJson);
+      await mockRedisOps.set(emailKey, userJson);
+      await mockRedisOps.set(idKey, userJson);
     } else {
       // Store user by both email and ID for fast lookups
       await Promise.all([
@@ -179,8 +203,8 @@ export const redisHelpers = {
     const idKey = keys.user.byId(id);
 
     if (useMockRedis) {
-      mockRedis.delete(emailKey);
-      mockRedis.delete(idKey);
+      await mockRedisOps.del(emailKey);
+      await mockRedisOps.del(idKey);
     } else {
       await Promise.all([
         redis.del(emailKey),
@@ -192,24 +216,44 @@ export const redisHelpers = {
   // Session operations
   async getSession(sessionId: string): Promise<Session | null> {
     const key = keys.session(sessionId);
-    const data = await redis.get(key);
-    return data ? JSON.parse(data as string) : null;
+    let data: string | null = null;
+
+    if (useMockRedis) {
+      data = await mockRedisOps.get(key);
+    } else {
+      data = await redis.get(key);
+    }
+
+    return data ? JSON.parse(data) : null;
   },
 
   async setSession(session: Session, ttlSeconds?: number): Promise<void> {
     const key = keys.session(session.id);
     const sessionJson = JSON.stringify(session);
 
-    if (ttlSeconds) {
-      await redis.setex(key, ttlSeconds, sessionJson);
+    if (useMockRedis) {
+      if (ttlSeconds) {
+        await mockRedisOps.setex(key, ttlSeconds, sessionJson);
+      } else {
+        await mockRedisOps.set(key, sessionJson);
+      }
     } else {
-      await redis.set(key, sessionJson);
+      if (ttlSeconds) {
+        await redis.setex(key, ttlSeconds, sessionJson);
+      } else {
+        await redis.set(key, sessionJson);
+      }
     }
   },
 
   async deleteSession(sessionId: string): Promise<void> {
     const key = keys.session(sessionId);
-    await redis.del(key);
+
+    if (useMockRedis) {
+      await mockRedisOps.del(key);
+    } else {
+      await redis.del(key);
+    }
   },
 
   // Settings operations
@@ -347,7 +391,11 @@ export { redis };
 // Health check function
 export async function checkRedisConnection(): Promise<boolean> {
   try {
-    await redis.ping();
+    if (useMockRedis) {
+      await mockRedisOps.ping();
+    } else {
+      await redis.ping();
+    }
     return true;
   } catch (error) {
     console.error('Redis connection check failed:', error);
