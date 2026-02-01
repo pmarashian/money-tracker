@@ -359,15 +359,28 @@ export const redisHelpers = {
   // Recurring transaction operations
   async getUserRecurringTransactions(userId: string): Promise<RecurringTransaction[]> {
     const key = keys.recurring(userId);
-    const data = await redis.get(key);
-    return data ? JSON.parse(data as string) : [];
+    let data: string | null = null;
+
+    if (useMockRedis) {
+      data = await mockRedisOps.get(key);
+    } else {
+      data = await redis.get(key);
+    }
+
+    return data ? JSON.parse(data) : [];
   },
 
   async addUserRecurringTransaction(userId: string, recurring: RecurringTransaction): Promise<void> {
     const existing = await this.getUserRecurringTransactions(userId);
     const updated = [...existing, recurring];
     const key = keys.recurring(userId);
-    await redis.set(key, JSON.stringify(updated));
+    const transactionsJson = JSON.stringify(updated);
+
+    if (useMockRedis) {
+      await mockRedisOps.set(key, transactionsJson);
+    } else {
+      await redis.set(key, transactionsJson);
+    }
   },
 
   async updateUserRecurringTransaction(userId: string, recurringId: string, updates: Partial<RecurringTransaction>): Promise<void> {
@@ -380,14 +393,26 @@ export const redisHelpers = {
 
     existing[index] = { ...existing[index], ...updates, updatedAt: new Date().toISOString() };
     const key = keys.recurring(userId);
-    await redis.set(key, JSON.stringify(existing));
+    const transactionsJson = JSON.stringify(existing);
+
+    if (useMockRedis) {
+      await mockRedisOps.set(key, transactionsJson);
+    } else {
+      await redis.set(key, transactionsJson);
+    }
   },
 
   async deleteUserRecurringTransaction(userId: string, recurringId: string): Promise<void> {
     const existing = await this.getUserRecurringTransactions(userId);
     const filtered = existing.filter(r => r.id !== recurringId);
     const key = keys.recurring(userId);
-    await redis.set(key, JSON.stringify(filtered));
+    const transactionsJson = JSON.stringify(filtered);
+
+    if (useMockRedis) {
+      await mockRedisOps.set(key, transactionsJson);
+    } else {
+      await redis.set(key, transactionsJson);
+    }
   },
 
   // Chat context operations
@@ -441,6 +466,31 @@ export const redisHelpers = {
       await mockRedisOps.del(key);
     } else {
       await redis.del(key);
+    }
+  },
+
+  // Recurring detection cache operations
+  async getUserRecurringCache(userId: string): Promise<any> {
+    const key = keys.recurring(userId);
+    let data: string | null = null;
+
+    if (useMockRedis) {
+      data = await mockRedisOps.get(key);
+    } else {
+      data = await redis.get(key);
+    }
+
+    return data ? JSON.parse(data) : null;
+  },
+
+  async setUserRecurringCache(userId: string, data: any): Promise<void> {
+    const key = keys.recurring(userId);
+    const jsonData = JSON.stringify(data);
+
+    if (useMockRedis) {
+      await mockRedisOps.set(key, jsonData);
+    } else {
+      await redis.set(key, jsonData);
     }
   },
 };

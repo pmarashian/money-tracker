@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '../../../../lib/auth';
 import { parseChaseCsv } from '../../../../lib/csv';
 import { redisHelpers } from '../../../../lib/redis';
+import { detectRecurringPatterns } from '../../../../lib/recurring';
 
 /**
  * Handles CSV file uploads for transaction import
@@ -72,8 +73,9 @@ async function uploadHandler(request: NextRequest): Promise<NextResponse> {
       await redisHelpers.addUserTransaction(user.id, transaction);
     }
 
-    // TODO: Trigger recurring detection here
-    // For now, just return success - client can request recurring refresh
+    // Detect recurring patterns and cache them
+    const recurringResult = detectRecurringPatterns(parseResult.transactions);
+    await redisHelpers.setUserRecurringCache(user.id, recurringResult);
 
     return NextResponse.json({
       success: true,
