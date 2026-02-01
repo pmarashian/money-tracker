@@ -2,14 +2,25 @@
   "name": "money-tracker",
   "version": "1.0.0",
   "main": "index.js",
-  "directories": {
-    "doc": "docs"
-  },
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
   "scripts": {
+    "install:all": "npm install && npm install --workspace=frontend && npm install --workspace=backend",
+    "dev": "concurrently \"npm run dev --workspace=backend\" \"npm run dev --workspace=frontend\"",
+    "build": "npm run build --workspace=frontend",
+    "cap:sync": "npx cap sync",
+    "cap:ios": "npx cap open ios",
+    "cap:android": "npx cap open android",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": ""
+  "description": "Money Tracker - Cross-platform expense tracking app",
+  "devDependencies": {
+    "@capacitor/cli": "^5.0.0",
+    "concurrently": "^8.0.0"
+  }
 }
