@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiClient } from '../utils/api';
 
 
 interface ProjectedTransaction {
@@ -38,19 +39,16 @@ export function useHealth(): UseHealthReturn {
       setLoading(true);
       setError(null);
 
-      const response = await fetch('http://localhost:3000/api/health', {
-        credentials: 'include',
-      });
+      const response = await apiClient.get<HealthResult>('/api/health');
 
-      if (!response.ok) {
+      if (response.error) {
         if (response.status === 401) {
           throw new Error('Please log in to view your financial health');
         }
-        throw new Error(`Failed to fetch health data: ${response.statusText}`);
+        throw new Error(response.error);
       }
 
-      const data: HealthResult = await response.json();
-      setHealthData(data);
+      setHealthData(response.data || null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error occurred');
       setHealthData(null);

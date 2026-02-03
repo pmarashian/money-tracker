@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiClient } from '../utils/api';
 
 interface UserSettings {
   balance: number;
@@ -25,19 +26,16 @@ export function useSettings(): UseSettingsReturn {
       setLoading(true);
       setError(null);
 
-      const response = await fetch('http://localhost:3000/api/settings', {
-        credentials: 'include',
-      });
+      const response = await apiClient.get<UserSettings>('/api/settings');
 
-      if (!response.ok) {
+      if (response.error) {
         if (response.status === 401) {
           throw new Error('Please log in to view settings');
         }
-        throw new Error(`Failed to fetch settings: ${response.statusText}`);
+        throw new Error(response.error);
       }
 
-      const data: UserSettings = await response.json();
-      setSettings(data);
+      setSettings(response.data || null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error occurred');
       setSettings(null);
@@ -50,28 +48,20 @@ export function useSettings(): UseSettingsReturn {
     try {
       setError(null);
 
-      const response = await fetch('http://localhost:3000/api/settings', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(updates),
-      });
+      const response = await apiClient.patch<UserSettings>('/api/settings', updates);
 
-      if (!response.ok) {
+      if (response.error) {
         if (response.status === 401) {
           throw new Error('Please log in to update settings');
         }
         if (response.status === 400) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Invalid settings data');
+          // The API client already handles JSON parsing for error responses
+          throw new Error(response.error);
         }
-        throw new Error(`Failed to update settings: ${response.statusText}`);
+        throw new Error(response.error);
       }
 
-      const updatedSettings: UserSettings = await response.json();
-      setSettings(updatedSettings);
+      setSettings(response.data || null);
       return true;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';

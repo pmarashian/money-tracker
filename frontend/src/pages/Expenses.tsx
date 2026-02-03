@@ -19,6 +19,7 @@ import {
 } from '@ionic/react'
 import { useHistory } from 'react-router-dom'
 import { useRecurringExpenses } from '../hooks/useRecurringExpenses'
+import { apiClient } from '../utils/api'
 import { repeat, calendar } from 'ionicons/icons'
 
 const ExpensesPage: React.FC = () => {
@@ -32,11 +33,9 @@ const ExpensesPage: React.FC = () => {
 
   const checkSession = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/auth/session', {
-        credentials: 'include',
-      })
+      const response = await apiClient.get('/api/auth/session')
 
-      if (!response.ok) {
+      if (response.error) {
         // Not logged in, redirect to login
         history.push('/login')
       }

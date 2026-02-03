@@ -21,6 +21,7 @@ import {
 import { useHistory } from 'react-router-dom'
 import { trendingUp, trendingDown, wallet, calendar, settings } from 'ionicons/icons'
 import { useHealth } from '../hooks/useHealth'
+import { apiClient } from '../utils/api'
 
 const HomePage: React.FC = () => {
   const [user, setUser] = useState<any>(null)
@@ -35,13 +36,10 @@ const HomePage: React.FC = () => {
 
   const checkSession = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/auth/session', {
-        credentials: 'include',
-      })
+      const response = await apiClient.get('/api/auth/session')
 
-      if (response.ok) {
-        const userData = await response.json()
-        setUser(userData)
+      if (!response.error) {
+        setUser(response.data)
       } else {
         // Not logged in, redirect to login
         history.push('/login')
@@ -56,10 +54,7 @@ const HomePage: React.FC = () => {
 
   const handleLogout = async () => {
     try {
-      await fetch('http://localhost:3000/api/auth/logout', {
-        method: 'POST',
-        credentials: 'include',
-      })
+      await apiClient.post('/api/auth/logout')
       // Redirect to login regardless of response
       history.push('/login')
     } catch (err) {

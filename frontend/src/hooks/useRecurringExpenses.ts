@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiClient } from '../utils/api';
 
 interface RecurringPattern {
   name: string;
@@ -30,19 +31,16 @@ export function useRecurringExpenses(): UseRecurringExpensesReturn {
       setLoading(true);
       setError(null);
 
-      const response = await fetch('http://localhost:3000/api/transactions/recurring', {
-        credentials: 'include',
-      });
+      const response = await apiClient.get<{ recurring: RecurringPattern[] }>('/api/transactions/recurring');
 
-      if (!response.ok) {
+      if (response.error) {
         if (response.status === 401) {
           throw new Error('Please log in to view recurring expenses');
         }
-        throw new Error(`Failed to fetch recurring expenses: ${response.statusText}`);
+        throw new Error(response.error);
       }
 
-      const data = await response.json();
-      setRecurringExpenses(data.recurring || []);
+      setRecurringExpenses(response.data?.recurring || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error occurred');
       setRecurringExpenses(null);

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Route, RouteProps, useHistory } from 'react-router-dom'
 import { IonLoading } from '@ionic/react'
+import { apiClient } from '../utils/api'
 
 interface PrivateRouteProps extends RouteProps {
   component: React.ComponentType<any>
@@ -17,12 +18,10 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ component: Component, ...re
 
   const checkAuthentication = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/auth/session', {
-        credentials: 'include',
-      })
+      const response = await apiClient.get('/api/auth/session')
 
-      if (response.ok) {
-        await response.json() // Validate response format
+      if (!response.error) {
+        // Response data exists, so authenticated
         setIsAuthenticated(true)
       } else {
         setIsAuthenticated(false)

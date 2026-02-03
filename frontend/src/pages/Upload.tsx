@@ -16,6 +16,7 @@ import {
 } from '@ionic/react'
 import { cloudUpload } from 'ionicons/icons'
 import { useHistory } from 'react-router-dom'
+import { apiClient } from '../utils/api'
 
 const UploadPage: React.FC = () => {
   const [loading, setLoading] = useState(true)
@@ -31,11 +32,9 @@ const UploadPage: React.FC = () => {
 
   const checkSession = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/auth/session', {
-        credentials: 'include',
-      })
+      const response = await apiClient.get('/api/auth/session')
 
-      if (!response.ok) {
+      if (response.error) {
         // Not logged in, redirect to login
         history.push('/login')
       }
@@ -59,20 +58,19 @@ const UploadPage: React.FC = () => {
       const formData = new FormData()
       formData.append('file', file)
 
-      const response = await fetch('http://localhost:3000/api/transactions/upload', {
+      // For file uploads, we need to make a direct fetch call since the API client expects JSON
+      const response = await apiClient.makeRequest('/api/transactions/upload', {
         method: 'POST',
-        credentials: 'include',
         body: formData,
+        headers: {}, // Override default JSON content-type for FormData
       })
 
-      if (response.ok) {
-        const result = await response.json()
-        setUploadResult(result)
-        console.log('Upload successful:', result)
+      if (!response.error) {
+        setUploadResult(response.data)
+        console.log('Upload successful:', response.data)
       } else {
-        const errorData = await response.json()
-        setError(errorData.error || 'Upload failed')
-        console.error('Upload failed:', errorData)
+        setError(typeof response.error === 'string' ? response.error : 'Upload failed')
+        console.error('Upload failed:', response.error)
       }
     } catch (err) {
       setError('Network error occurred. Please try again.')

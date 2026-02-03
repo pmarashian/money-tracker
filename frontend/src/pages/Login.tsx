@@ -13,6 +13,7 @@ import {
   IonLoading
 } from '@ionic/react'
 import { useHistory } from 'react-router-dom'
+import { apiClient } from '../utils/api'
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('')
@@ -29,23 +30,14 @@ const LoginPage: React.FC = () => {
     setError('')
 
     try {
-      const response = await fetch('http://localhost:3000/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include', // Important for cookies
-        body: JSON.stringify({ email, password }),
-      })
+      const response = await apiClient.post('/api/auth/login', { email, password })
 
-      const data = await response.json()
-
-      if (response.ok) {
+      if (!response.error) {
         // Success - redirect to home
         history.push('/home')
       } else {
         // Error - show message
-        setError(data.error || 'Login failed')
+        setError(typeof response.error === 'string' ? response.error : 'Login failed')
         setShowAlert(true)
       }
     } catch (err) {

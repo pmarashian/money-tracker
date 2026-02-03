@@ -19,6 +19,7 @@ import {
 } from '@ionic/react'
 import { send } from 'ionicons/icons'
 import { useHistory } from 'react-router-dom'
+import { apiClient } from '../utils/api'
 
 const ChatPage: React.FC = () => {
   const [loading, setLoading] = useState(true)
@@ -34,11 +35,9 @@ const ChatPage: React.FC = () => {
 
   const checkSession = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/auth/session', {
-        credentials: 'include',
-      })
+      const response = await apiClient.get('/api/auth/session')
 
-      if (!response.ok) {
+      if (response.error) {
         // Not logged in, redirect to login
         history.push('/login')
       }
@@ -59,25 +58,17 @@ const ChatPage: React.FC = () => {
     setSending(true)
 
     try {
-      const response = await fetch('http://localhost:3000/api/chat', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ message }),
-      })
+      const response = await apiClient.post<{ reply: string }>('/api/chat', { message })
 
-      if (response.ok) {
-        const result = await response.json()
+      if (!response.error && response.data) {
         const assistantMessage = {
           role: 'assistant' as const,
-          content: result.reply,
+          content: response.data.reply,
           timestamp: new Date()
         }
         setMessages(prev => [...prev, assistantMessage])
       } else {
-        console.error('Chat failed')
+        console.error('Chat failed:', response.error)
         // Show error message
       }
     } catch (err) {
