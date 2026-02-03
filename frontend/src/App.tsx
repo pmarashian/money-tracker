@@ -1,5 +1,7 @@
 import React from 'react'
-import { IonApp, IonContent, IonHeader, IonPage, IonTitle, IonToolbar, setupIonicReact } from '@ionic/react'
+import { IonApp, IonRouterOutlet, setupIonicReact } from '@ionic/react'
+import { IonReactRouter } from '@ionic/react-router'
+import { Route, Redirect } from 'react-router-dom'
 
 setupIonicReact()
 
@@ -22,21 +24,23 @@ import '@ionic/react/css/display.css'
 /* Theme variables */
 import './theme/variables.css'
 
+// Pages
+import LoginPage from './pages/Login'
+import RegisterPage from './pages/Register'
+import HomePage from './pages/Home'
+
 const App: React.FC = () => (
   <IonApp>
-    <IonPage>
-      <IonHeader>
-        <IonToolbar>
-          <IonTitle>Money Tracker</IonTitle>
-        </IonToolbar>
-      </IonHeader>
-      <IonContent fullscreen>
-        <div style={{ padding: '20px', textAlign: 'center' }}>
-          <h1>Welcome to Money Tracker</h1>
-          <p>Frontend scaffold is ready!</p>
-        </div>
-      </IonContent>
-    </IonPage>
+    <IonReactRouter>
+      <IonRouterOutlet>
+        <Route exact path="/login" component={LoginPage} />
+        <Route exact path="/register" component={RegisterPage} />
+        <Route exact path="/home" component={HomePage} />
+        <Route exact path="/">
+          <Redirect to="/home" />
+        </Route>
+      </IonRouterOutlet>
+    </IonReactRouter>
   </IonApp>
 )
 
