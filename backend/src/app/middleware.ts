@@ -1,6 +1,55 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getSession } from '@/lib/auth';
 
-export function middleware(request: NextRequest) {
+// Define protected routes that require authentication
+const protectedRoutes: string[] = [
+  // Add protected API routes here as needed
+  // Example: '/api/transactions',
+  // Example: '/api/settings',
+];
+
+// Define public auth routes that should skip auth middleware
+const publicAuthRoutes: string[] = [
+  '/api/auth/register',
+  '/api/auth/login',
+  '/api/auth/session', // Session endpoint should be publicly accessible to check auth status
+];
+
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Handle authentication for protected routes
+  if (protectedRoutes.some(route => pathname.startsWith(route))) {
+    try {
+      const user = await getSession(request);
+
+      if (!user) {
+        return NextResponse.json(
+          { error: 'Authentication required' },
+          { status: 401 }
+        );
+      }
+
+      // Add user info to headers for downstream use
+      const requestHeaders = new Headers(request.headers);
+      requestHeaders.set('x-user-id', user.id);
+      requestHeaders.set('x-user-email', user.email);
+
+      // Continue with authenticated request
+      return NextResponse.next({
+        request: {
+          headers: requestHeaders,
+        },
+      });
+    } catch (error) {
+      console.error('Auth middleware error:', error);
+      return NextResponse.json(
+        { error: 'Authentication error' },
+        { status: 401 }
+      );
+    }
+  }
+
   // Get allowed origins from environment variables
   const corsOrigin = process.env.CORS_ORIGIN;
   const corsProductionOrigin = process.env.CORS_PRODUCTION_ORIGIN;
