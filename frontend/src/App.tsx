@@ -29,13 +29,16 @@ import LoginPage from './pages/Login'
 import RegisterPage from './pages/Register'
 import HomePage from './pages/Home'
 
+// Components
+import PrivateRoute from './components/PrivateRoute'
+
 const App: React.FC = () => (
   <IonApp>
     <IonReactRouter>
       <IonRouterOutlet>
         <Route exact path="/login" component={LoginPage} />
         <Route exact path="/register" component={RegisterPage} />
-        <Route exact path="/home" component={HomePage} />
+        <PrivateRoute exact path="/home" component={HomePage} />
         <Route exact path="/">
           <Redirect to="/home" />
         </Route>
