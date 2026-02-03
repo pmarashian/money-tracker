@@ -17,7 +17,7 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({ component: Component, ...re
 
   const checkAuthentication = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/auth/session', {
+      const response = await fetch('http://localhost:3002/api/auth/session', {
         credentials: 'include',
       })
 

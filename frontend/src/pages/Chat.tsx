@@ -36,7 +36,7 @@ const ChatPage: React.FC = () => {
 
   const checkSession = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/auth/session', {
+      const response = await fetch('http://localhost:3002/api/auth/session', {
         credentials: 'include',
       })
 
@@ -64,7 +64,7 @@ const ChatPage: React.FC = () => {
     setSending(true)
 
     try {
-      const response = await fetch('http://localhost:3000/api/chat', {
+      const response = await fetch('http://localhost:3002/api/chat', {
         method: 'POST',
         credentials: 'include',
         headers: {

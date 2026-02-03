@@ -29,7 +29,7 @@ const ExpensesPage: React.FC = () => {
 
   const checkSession = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/auth/session', {
+      const response = await fetch('http://localhost:3002/api/auth/session', {
         credentials: 'include',
       })
 

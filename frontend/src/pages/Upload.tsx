@@ -30,7 +30,7 @@ const UploadPage: React.FC = () => {
 
   const checkSession = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/auth/session', {
+      const response = await fetch('http://localhost:3002/api/auth/session', {
         credentials: 'include',
       })
 
@@ -59,7 +59,7 @@ const UploadPage: React.FC = () => {
       const formData = new FormData()
       formData.append('file', file)
 
-      const response = await fetch('http://localhost:3000/api/transactions/upload', {
+      const response = await fetch('http://localhost:3002/api/transactions/upload', {
         method: 'POST',
         credentials: 'include',
         body: formData,
