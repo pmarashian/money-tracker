@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect } from 'react'
 import {
   IonPage,
   IonHeader,
@@ -13,17 +13,20 @@ import {
   IonList,
   IonItem,
   IonLabel,
-  IonBadge
+  IonBadge,
+  IonSpinner,
+  IonIcon
 } from '@ionic/react'
 import { useHistory } from 'react-router-dom'
+import { useRecurringExpenses } from '../hooks/useRecurringExpenses'
+import { repeat, calendar } from 'ionicons/icons'
 
 const ExpensesPage: React.FC = () => {
-  const [user, setUser] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
   const history = useHistory()
+  const { recurringExpenses, loading, error } = useRecurringExpenses()
 
   useEffect(() => {
-    // Check if user is logged in
+    // Check if user is logged in via session check
     checkSession()
   }, [])
 
@@ -33,27 +36,72 @@ const ExpensesPage: React.FC = () => {
         credentials: 'include',
       })
 
-      if (response.ok) {
-        const userData = await response.json()
-        setUser(userData)
-      } else {
+      if (!response.ok) {
         // Not logged in, redirect to login
         history.push('/login')
       }
     } catch (err) {
       // Network error, redirect to login
       history.push('/login')
-    } finally {
-      setLoading(false)
+    }
+  }
+
+  // Format amount as currency
+  const formatAmount = (amount: number): string => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(Math.abs(amount))
+  }
+
+  // Format frequency as human-readable
+  const formatFrequency = (frequency: string): string => {
+    switch (frequency) {
+      case 'weekly': return 'Weekly'
+      case 'biweekly': return 'Bi-weekly'
+      case 'monthly': return 'Monthly'
+      case 'quarterly': return 'Quarterly'
+      case 'yearly': return 'Yearly'
+      default: return frequency
     }
   }
 
   if (loading) {
     return (
       <IonPage>
+        <IonHeader>
+          <IonToolbar>
+            <IonTitle className="font-heading">Expenses</IonTitle>
+          </IonToolbar>
+        </IonHeader>
         <IonContent>
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-            <IonText>Loading...</IonText>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+            <IonSpinner name="crescent" />
+            <IonText style={{ marginLeft: '10px' }}>Loading recurring expenses...</IonText>
+          </div>
+        </IonContent>
+      </IonPage>
+    )
+  }
+
+  if (error) {
+    return (
+      <IonPage>
+        <IonHeader>
+          <IonToolbar>
+            <IonTitle className="font-heading">Expenses</IonTitle>
+          </IonToolbar>
+        </IonHeader>
+        <IonContent>
+          <div style={{ padding: '20px' }}>
+            <IonCard color="danger">
+              <IonCardHeader>
+                <IonCardTitle>Error Loading Expenses</IonCardTitle>
+              </IonCardHeader>
+              <IonCardContent>
+                <IonText color="danger">{error}</IonText>
+              </IonCardContent>
+            </IonCard>
           </div>
         </IonContent>
       </IonPage>
@@ -71,50 +119,41 @@ const ExpensesPage: React.FC = () => {
         <div style={{ padding: '20px' }}>
           <IonCard>
             <IonCardHeader>
-              <IonCardTitle>Track Your Expenses</IonCardTitle>
+              <IonCardTitle>Recurring Expenses</IonCardTitle>
             </IonCardHeader>
             <IonCardContent>
-              <IonText className="font-body">
-                <p>Manage and track your expenses here.</p>
-                <p>Features coming soon:</p>
-                <ul>
-                  <li>View expense history</li>
-                  <li>Add new expenses</li>
-                  <li>Expense categories</li>
-                  <li>Expense reports</li>
-                </ul>
-              </IonText>
-            </IonCardContent>
-          </IonCard>
-
-          <IonCard>
-            <IonCardHeader>
-              <IonCardTitle>Recent Expenses</IonCardTitle>
-            </IonCardHeader>
-            <IonCardContent>
-              <IonList>
-                <IonItem>
-                  <IonLabel>
-                    <h2>Groceries</h2>
-                    <p>Whole Foods Market</p>
-                  </IonLabel>
-                  <IonBadge color="danger" slot="end">-$85.32</IonBadge>
-                </IonItem>
-                <IonItem>
-                  <IonLabel>
-                    <h2>Gas</h2>
-                    <p>Shell Station</p>
-                  </IonLabel>
-                  <IonBadge color="danger" slot="end">-$45.00</IonBadge>
-                </IonItem>
-                <IonItem>
-                  <IonLabel>
-                    <h2>Coffee</h2>
-                    <p>Starbucks</p>
-                  </IonLabel>
-                  <IonBadge color="danger" slot="end">-$5.25</IonBadge>
-                </IonItem>
-              </IonList>
+              {!recurringExpenses || recurringExpenses.length === 0 ? (
+                <IonText className="font-body">
+                  <p>No recurring expenses detected yet.</p>
+                  <p>Upload some transaction data to see recurring patterns.</p>
+                </IonText>
+              ) : (
+                <IonList>
+                  {recurringExpenses.map((expense, index) => (
+                    <IonItem key={index}>
+                      <IonIcon icon={repeat} slot="start" color="primary" />
+                      <IonLabel>
+                        <h2>{expense.name}</h2>
+                        <p>
+                          <IonIcon icon={calendar} size="small" />
+                          {' '}
+                          {formatFrequency(expense.frequency)}
+                          {expense.typicalDayOfMonth && expense.frequency === 'monthly'
+                            ? ` (around day ${expense.typicalDayOfMonth})`
+                            : ''
+                          }
+                        </p>
+                        <p style={{ fontSize: '0.9em', color: 'var(--ion-color-medium)' }}>
+                          {expense.transactionCount} transactions • Last: {expense.lastDate}
+                        </p>
+                      </IonLabel>
+                      <IonBadge color="danger" slot="end">
+                        -{formatAmount(expense.amount)}
+                      </IonBadge>
+                    </IonItem>
+                  ))}
+                </IonList>
+              )}
             </IonCardContent>
           </IonCard>
         </div>
