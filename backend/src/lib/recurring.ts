@@ -26,6 +26,14 @@ export interface RecurringPattern {
   predictedNextDate: string;
 }
 
+export interface PayrollBonusEvent {
+  date: string; // MM/DD/YYYY format
+  amount: number;
+  type: 'payroll' | 'bonus';
+  description: string;
+  normalizedMerchant?: string;
+}
+
 /**
  * Detect recurring transactions from a list of transactions
  */
@@ -236,4 +244,90 @@ function formatDate(date: Date): string {
   const day = date.getDate().toString().padStart(2, '0');
   const year = date.getFullYear();
   return `${month}/${day}/${year}`;
+}
+
+/**
+ * Detect payroll and bonus transactions from credits
+ */
+export function detectPayrollBonusTransactions(transactions: Transaction[]): PayrollBonusEvent[] {
+  const payrollBonusEvents: PayrollBonusEvent[] = [];
+
+  // Get all credit transactions (positive amounts)
+  const creditTransactions = transactions.filter(tx => tx.amount > 0);
+
+  if (creditTransactions.length === 0) {
+    return payrollBonusEvents;
+  }
+
+  // Identify payroll transactions based on description patterns
+  const payrollTransactions: Transaction[] = [];
+  const potentialBonusTransactions: Transaction[] = [];
+
+  for (const tx of creditTransactions) {
+    const description = tx.description.toUpperCase();
+    const normalizedMerchant = tx.normalizedMerchant?.toUpperCase() || '';
+
+    // Check for payroll indicators
+    const payrollIndicators = [
+      'PAYROLL',
+      'DIRECT DEP',
+      'DIRECT DEPOSIT',
+      'SALARY',
+      'WAGES',
+      'COMPENSATION'
+    ];
+
+    const isPayroll = payrollIndicators.some(indicator =>
+      description.includes(indicator) || normalizedMerchant.includes(indicator)
+    );
+
+    if (isPayroll) {
+      payrollTransactions.push(tx);
+    } else {
+      potentialBonusTransactions.push(tx);
+    }
+  }
+
+  // Calculate median payroll amount if we have payroll transactions
+  let medianPayrollAmount = 0;
+  if (payrollTransactions.length > 0) {
+    const payrollAmounts = payrollTransactions.map(tx => tx.amount).sort((a, b) => a - b);
+    const mid = Math.floor(payrollAmounts.length / 2);
+    medianPayrollAmount = payrollAmounts.length % 2 === 0
+      ? (payrollAmounts[mid - 1] + payrollAmounts[mid]) / 2
+      : payrollAmounts[mid];
+  }
+
+  // Add payroll events
+  for (const tx of payrollTransactions) {
+    payrollBonusEvents.push({
+      date: tx.postingDate,
+      amount: tx.amount,
+      type: 'payroll',
+      description: tx.description,
+      normalizedMerchant: tx.normalizedMerchant,
+    });
+  }
+
+  // Identify bonus transactions: large outliers (>2x median payroll)
+  const bonusThreshold = medianPayrollAmount > 0 ? medianPayrollAmount * 2 : 0;
+
+  for (const tx of potentialBonusTransactions) {
+    if (tx.amount > bonusThreshold) {
+      payrollBonusEvents.push({
+        date: tx.postingDate,
+        amount: tx.amount,
+        type: 'bonus',
+        description: tx.description,
+        normalizedMerchant: tx.normalizedMerchant,
+      });
+    }
+  }
+
+  // Sort by date (newest first)
+  return payrollBonusEvents.sort((a, b) => {
+    const dateA = new Date(a.date);
+    const dateB = new Date(b.date);
+    return dateB.getTime() - dateA.getTime();
+  });
 }

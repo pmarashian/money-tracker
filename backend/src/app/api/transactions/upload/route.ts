@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '../../../../lib/auth';
 import { redisOps, mtKeys } from '../../../../lib/redis';
-import { detectRecurringTransactions } from '../../../../lib/recurring';
+import { detectRecurringTransactions, detectPayrollBonusTransactions } from '../../../../lib/recurring';
 import { parseChaseCSV, validateChaseColumns, ParsedTransaction } from '../../../../lib/csv';
 
 export async function POST(request: NextRequest) {
@@ -53,11 +53,19 @@ export async function POST(request: NextRequest) {
     const recurringKey = mtKeys.recurring(user.id);
     await redisOps.set(recurringKey, JSON.stringify(recurringPatterns));
 
+    // Run payroll/bonus detection
+    const payrollBonusEvents = detectPayrollBonusTransactions(transactions);
+
+    // Store payroll/bonus events in Redis
+    const payrollKey = mtKeys.payroll(user.id);
+    await redisOps.set(payrollKey, JSON.stringify(payrollBonusEvents));
+
     // Return success response
     return NextResponse.json({
       success: true,
       transactionCount: transactions.length,
       recurringPatternsCount: recurringPatterns.length,
+      payrollBonusEventsCount: payrollBonusEvents.length,
     });
 
   } catch (error) {

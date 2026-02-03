@@ -81,6 +81,12 @@ export const mtKeys = {
   recurring: (userId: string) => `mt:recurring:${userId}`,
 
   /**
+   * Payroll/Bonus transaction keys
+   * Pattern: mt:payroll:{userId}
+   */
+  payroll: (userId: string) => `mt:payroll:${userId}`,
+
+  /**
    * Chat keys
    * Pattern: mt:chat:{userId}
    */
