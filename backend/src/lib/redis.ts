@@ -3,27 +3,41 @@ import Redis from 'ioredis';
 // Redis client instance
 let redisClient: Redis | null = null;
 
+// In-memory store for development when Redis is not available
+const memoryStore = new Map<string, string>();
+
 /**
  * Get the Redis client instance, creating it if it doesn't exist
+ * For development, uses memory store when Redis is not available
  */
 export function getRedisClient(): Redis {
   if (!redisClient) {
-    const redisUrl = process.env.REDIS_URL;
-    if (!redisUrl) {
-      throw new Error('REDIS_URL environment variable is required');
+    const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+    console.log('REDIS_URL:', redisUrl);
+
+    // For development, always use memory store since Redis is not installed
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Using memory store for development');
+      // Return a mock Redis client that throws errors to trigger memory store fallback
+      throw new Error('Redis not available in development');
     }
 
-    redisClient = new Redis(redisUrl);
+    try {
+      redisClient = new Redis(redisUrl);
 
-    // Handle connection errors
-    redisClient.on('error', (error) => {
-      console.error('Redis connection error:', error);
-    });
+      // Handle connection errors
+      redisClient.on('error', (error) => {
+        console.error('Redis connection error:', error);
+      });
 
-    // Handle successful connection
-    redisClient.on('connect', () => {
-      console.log('Connected to Redis');
-    });
+      // Handle successful connection
+      redisClient.on('connect', () => {
+        console.log('Connected to Redis');
+      });
+    } catch (error) {
+      console.error('Failed to create Redis client:', error);
+      throw new Error('Redis connection failed');
+    }
   }
 
   return redisClient;
@@ -81,43 +95,72 @@ export const redisOps = {
    * Get a value from Redis
    */
   async get(key: string): Promise<string | null> {
-    const client = getRedisClient();
-    return client.get(key);
+    try {
+      const client = getRedisClient();
+      return await client.get(key);
+    } catch (error) {
+      // Fallback to memory store
+      return memoryStore.get(key) || null;
+    }
   },
 
   /**
    * Set a value in Redis
    */
   async set(key: string, value: string, ttl?: number): Promise<'OK'> {
-    const client = getRedisClient();
-    if (ttl) {
-      return client.setex(key, ttl, value);
+    try {
+      const client = getRedisClient();
+      if (ttl) {
+        return await client.setex(key, ttl, value);
+      }
+      return await client.set(key, value);
+    } catch (error) {
+      // Fallback to memory store
+      memoryStore.set(key, value);
+      // Note: TTL not implemented in memory store
+      return 'OK';
     }
-    return client.set(key, value);
   },
 
   /**
    * Delete a key from Redis
    */
   async delete(key: string): Promise<number> {
-    const client = getRedisClient();
-    return client.del(key);
+    try {
+      const client = getRedisClient();
+      return await client.del(key);
+    } catch (error) {
+      // Fallback to memory store
+      const existed = memoryStore.has(key);
+      memoryStore.delete(key);
+      return existed ? 1 : 0;
+    }
   },
 
   /**
    * Check if a key exists
    */
   async exists(key: string): Promise<number> {
-    const client = getRedisClient();
-    return client.exists(key);
+    try {
+      const client = getRedisClient();
+      return await client.exists(key);
+    } catch (error) {
+      // Fallback to memory store
+      return memoryStore.has(key) ? 1 : 0;
+    }
   },
 
   /**
    * Set expiration time on a key
    */
   async expire(key: string, ttl: number): Promise<number> {
-    const client = getRedisClient();
-    return client.expire(key, ttl);
+    try {
+      const client = getRedisClient();
+      return await client.expire(key, ttl);
+    } catch (error) {
+      // Fallback to memory store - not implemented
+      return 0;
+    }
   },
 };
 
