@@ -10,6 +10,7 @@ export interface Transaction {
   type: string;
   balance: number;
   checkOrSlipNumber?: string;
+  normalizedMerchant?: string; // Normalized merchant name for consistent recurring detection
 }
 
 export interface RecurringPattern {
@@ -30,11 +31,14 @@ export interface RecurringPattern {
 export function detectRecurringTransactions(transactions: Transaction[]): RecurringPattern[] {
   const patterns: RecurringPattern[] = [];
 
-  // Group transactions by description and amount (rounded to avoid floating point issues)
+  // Group transactions by normalized merchant name (or description if not normalized) and amount
+  // This ensures consistent recurring detection using clean merchant names
   const groups = new Map<string, Transaction[]>();
 
   for (const tx of transactions) {
-    const key = `${tx.description.trim().toLowerCase()}_${Math.round(tx.amount * 100)}`;
+    // Use normalized merchant if available, otherwise fall back to description
+    const merchantName = tx.normalizedMerchant || tx.description;
+    const key = `${merchantName.trim().toLowerCase()}_${Math.round(tx.amount * 100)}`;
     if (!groups.has(key)) {
       groups.set(key, []);
     }
@@ -82,7 +86,8 @@ export function detectRecurringTransactions(transactions: Transaction[]): Recurr
     const nextDate = predictNextDate(lastDate, frequency);
 
     const pattern: RecurringPattern = {
-      description: sortedTxns[0].description.trim(),
+      // Use normalized merchant name for consistent pattern identification
+      description: sortedTxns[0].normalizedMerchant || sortedTxns[0].description.trim(),
       amount: sortedTxns[0].amount,
       frequency,
       confidence,
