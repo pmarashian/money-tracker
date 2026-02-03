@@ -75,7 +75,7 @@ const HomePage: React.FC = () => {
     <IonPage>
       <IonHeader>
         <IonToolbar>
-          <IonTitle>Money Tracker</IonTitle>
+          <IonTitle className="font-heading">Money Tracker</IonTitle>
           <IonButton slot="end" onClick={handleLogout}>
             Logout
           </IonButton>
@@ -88,7 +88,7 @@ const HomePage: React.FC = () => {
               <IonCardTitle>Welcome, {user?.email}!</IonCardTitle>
             </IonCardHeader>
             <IonCardContent>
-              <IonText>
+              <IonText className="font-body">
                 <p>You are successfully logged in to Money Tracker.</p>
                 <p>This is the home page where you'll manage your finances.</p>
                 <p>Features coming soon:</p>

@@ -60,7 +60,7 @@ const RegisterPage: React.FC = () => {
     <IonPage>
       <IonHeader>
         <IonToolbar>
-          <IonTitle>Register</IonTitle>
+          <IonTitle className="font-heading">Register</IonTitle>
         </IonToolbar>
       </IonHeader>
       <IonContent fullscreen>

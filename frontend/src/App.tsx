@@ -24,6 +24,9 @@ import '@ionic/react/css/display.css'
 /* Theme variables */
 import './theme/variables.css'
 
+/* Global styles */
+import './globals.css'
+
 // Pages
 import LoginPage from './pages/Login'
 import RegisterPage from './pages/Register'
