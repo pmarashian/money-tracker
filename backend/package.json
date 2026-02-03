@@ -10,10 +10,11 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "cors": "^2.8.5",
+    "ioredis": "^5.9.2",
     "next": "16.1.6",
     "react": "19.2.3",
-    "react-dom": "19.2.3",
-    "cors": "^2.8.5"
+    "react-dom": "19.2.3"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
