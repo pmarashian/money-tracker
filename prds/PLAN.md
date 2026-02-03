@@ -5,7 +5,7 @@
 ```mermaid
 flowchart LR
   subgraph client [Frontend]
-    Web[Next.js Web]
+    Web[Vite React Ionic Web]
     Cap[Capacitor iOS/Android]
   end
   subgraph api [Backend]
@@ -20,8 +20,8 @@ flowchart LR
   NextAPI --> OpenAI[OpenAI]
 ```
 
-- **Monorepo** (per nextjs-capacitor skill Option B): `frontend/` (Next.js + Capacitor + Ionic), `backend/` (Next.js API), root `capacitor.config.ts` with `webDir: "frontend/dist"`.
-- **Frontend**: Single Next.js app; conditional static export when `CAPACITOR_BUILD=true` for Capacitor. Calls backend via `NEXT_PUBLIC_API_URL` (absolute URLs for Capacitor).
+- **Monorepo**: `frontend/` (Vite + React + Ionic + Capacitor), `backend/` (Next.js API), root `capacitor.config.ts` with `webDir: "frontend/dist"`.
+- **Frontend**: Single Vite + React app with Ionic React; TypeScript, standard Vite build → `dist/`. Capacitor uses `frontend/dist` (no conditional export flags). API base URL via `VITE_API_URL` (e.g. `import.meta.env.VITE_API_URL`) for both web and Capacitor (absolute URLs for native).
 - **Backend**: Standalone Next.js app (API routes only, no UI), port e.g. 3000; frontend dev on 3001.
 - **Data**: Redis via external provider (e.g. Upstash). Store: user accounts, parsed transactions, detected recurring expenses, user settings (balance, paycheck amount, next bonus date), and session/token data for auth.
 - **Auth**: Email/password; backend issues HTTP-only cookies or JWT; frontend sends credentials/cookie on API requests.
@@ -29,20 +29,20 @@ flowchart LR
 
 ---
 
-## 1. Project scaffolding (nextjs-capacitor layout)
+## 1. Project scaffolding (Vite + React + Ionic layout)
 
 - **Root**: Create `frontend/` and `backend/`; root `package.json` with workspaces or separate `package.json` per app; root `capacitor.config.ts` with `appId`, `appName`, `webDir: "frontend/dist"`.
 - **Frontend** (`frontend/`):
-  - `npx create-next-app@latest` with TypeScript, App Router, Tailwind, `src/`.
+  - Vite + React + TypeScript: `npm create vite@latest frontend -- --template react-ts` (or equivalent).
   - Install: `@capacitor/core`, `@capacitor/cli`, `@capacitor/android`, `@capacitor/ios`, `@ionic/react`, `ionicons`; optional `@capacitor/splash-screen`, `@capacitor/status-bar`, `@capacitor/app`.
-  - Next config: when `CAPACITOR_BUILD === "true"`, set `output: "export"`, `images.unoptimized: true`, `distDir: "dist"`, `trailingSlash: true`; transpile `@ionic/react`, `@ionic/core`, `@stencil/core`; webpack fallbacks for Node polyfills (fs, crypto, etc.) on client.
-  - `src/app/layout.tsx`: Import Ionic core CSS + `palettes/dark.css`, `globals.css`; viewport meta, theme-color; wrap children in `IonApp` (from `IonicApp.tsx` client component that runs `setupIonicReact()`).
-  - Scripts: `dev` (e.g. 3001), `build`, `cap:sync` = `CAPACITOR_BUILD=true next build && cap sync`.
+  - Use official Ionic Vite setup: `vite.config.ts` per Ionic docs. Vite build outputs to `dist/` by default.
+  - Entry: `index.html` → `src/main.tsx`. In the root component (e.g. `App.tsx`), call `setupIonicReact()` once; import Ionic core CSS and dark palette (e.g. `@ionic/react/css/core.css`, `@ionic/react/css/palettes/dark.css`); set viewport and theme-color in `index.html` or via a component. Wrap the app in `IonApp`.
+  - Scripts: `dev` (e.g. port 3001), `build` (Vite → `dist/`), `cap:sync` = `npm run build && npx cap sync`.
 - **Backend** (`backend/`):
   - New Next.js app with App Router; only API routes under `app/api/`. No UI pages. Port 3000 in dev.
   - Env: `REDIS_URL`, `OPENAI_API_KEY`, `JWT_SECRET` (or session secret), `NEXTAUTH_URL` or CORS origin for frontend.
 
-Use the nextjs-capacitor skill instructions at `~/.cursor/skills/nextjs-capacitor` for exact `next.config.js` webpack/export snippets and `IonicApp`/layout patterns.
+See Ionic and Capacitor official documentation for Vite setup details.
 
 ---
 
@@ -107,13 +107,13 @@ Implementation note: Do recurrence detection in a backend service (e.g. `backend
 
 ## 7. Frontend UI (minimalist dark, fonts, Ionic tabs)
 
-- **Theme**: Dark theme only. Simple shapes, borders (e.g. cards with 1px border, no heavy shadows). Use Ionic dark palette; override in `globals.css` so background and borders match "minimalist dark."
+- **Theme**: Dark theme only. Simple shapes, borders (e.g. cards with 1px border, no heavy shadows). Use Ionic dark palette; override in `App.css` or `globals.css` so background and borders match "minimalist dark."
 - **Fonts**:
   - Headings: **Press Start 2P** (Google Fonts).
   - Body: **VT323** (Google Fonts).
-  - Load in `layout.tsx` or `globals.css`; apply via Tailwind or CSS classes (e.g. `font-heading`, `font-body`).
+  - Load in `index.html` (font links) and main app CSS (e.g. `App.css` or `globals.css`); apply via Tailwind or CSS classes (e.g. `font-heading`, `font-body`).
 - **Navigation**: Ionic **IonTabs** at the bottom (footer). Tabs suggested: Home (dashboard / health), Expenses (recurring list), Upload (CSV upload), Chat (AI), Settings (balance, paycheck, next bonus date). Use `ion-tab-bar` with `slot="bottom"` and `ion-tab-button` with icons (e.g. home, list, cloud-upload, chatbubble, settings).
-- **Screens**:
+- **Screens**: Use React Router (or similar) for tabs and auth. Implement pages under `src/pages/` (or `src/routes/`): Home, Expenses, Upload, Chat, Settings, Login, Register. `App.tsx` holds the shell (tabs and route definitions).
   - **Home**: Show financial health status (enough / not enough / too much), projected balance, and maybe a short summary (e.g. next paycheck date, days until bonus).
   - **Expenses**: List of detected recurring expenses (name, amount, frequency); allow optional "ignore" or "edit" later if you add that.
   - **Upload**: File input for Chase CSV; "Upload" button; call `POST /api/transactions/upload`; on success, trigger recurring detection and refresh health.
@@ -127,28 +127,28 @@ Implementation note: Do recurrence detection in a backend service (e.g. `backend
 
 | Area | Location | Purpose |
 |------|----------|---------|
-| Scaffolding | Root + `frontend/`, `backend/` | Next.js apps, Capacitor config, Ionic setup per skill |
+| Scaffolding | Root + `frontend/`, `backend/` | Vite + React + Ionic app, Next.js backend, Capacitor config (see Ionic/Capacitor Vite docs) |
 | CSV + recurring | `backend/lib/csv.ts`, `backend/lib/recurring.ts` | Parse Chase CSV; normalize descriptions; group; detect frequency/amount; payroll vs bonus |
 | Health | `backend/lib/health.ts` | Project inflows/outflows; compute status (not_enough / enough / too_much) |
 | API | `backend/app/api/transactions/upload`, `recurring`, `backend/app/api/health`, `settings`, `backend/app/api/chat`, `backend/app/api/auth/*` | Upload, recurring, health, settings, chat, auth |
 | Redis | `backend/lib/redis.ts` | Client and key helpers |
 | Auth | `backend/lib/auth.ts` + auth API routes | Register, login, session, middleware to protect API routes |
-| UI | `frontend/src/app/(tabs)/*`, `frontend/src/app/login`, `register` | Tabs (home, expenses, upload, chat, settings), auth pages |
-| Fonts + theme | `frontend/src/app/globals.css`, `layout.tsx` | Press Start 2P, VT323, dark theme variables |
+| UI | `frontend/index.html`, `frontend/src/main.tsx`, `frontend/src/App.tsx`, `frontend/vite.config.ts`, `frontend/src/pages/` | Entry, app shell, tabs (home, expenses, upload, chat, settings), auth pages (login, register) |
+| Fonts + theme | `frontend/src/App.css` or `globals.css`, `frontend/src/App.tsx`, `index.html` | Press Start 2P, VT323, dark theme variables |
 
 ---
 
 ## 9. Environment and run order
 
 - **Backend**: `REDIS_URL`, `OPENAI_API_KEY`, `JWT_SECRET` (or NextAuth secret), CORS origin for `http://localhost:3001` and your production frontend URL.
-- **Frontend**: `NEXT_PUBLIC_API_URL` (e.g. `http://localhost:3000` in dev, backend URL in prod).
-- **Run**: Start backend (`cd backend && npm run dev`), then frontend (`cd frontend && npm run dev`). For mobile: `cd frontend && npm run cap:sync` then open iOS/Android project.
+- **Frontend**: `VITE_API_URL` (e.g. `http://localhost:3000` in dev, backend URL in prod). Access in code via `import.meta.env.VITE_API_URL`.
+- **Run**: Start backend (`cd backend && npm run dev`), then frontend (`cd frontend && npm run dev`). For mobile: `cd frontend && npm run build && npx cap sync`, then open iOS/Android project.
 
 ---
 
 ## 10. Optional follow-ups (out of scope for initial plan)
 
-- Push notifications (nextjs-capacitor skill has a full section).
+- Push notifications (Capacitor and Ionic docs cover setup).
 - Editing recurring items (e.g. mark as one-off, or override amount).
 - Multiple accounts or multiple CSV files (current plan: one account, one active upload per user).
 - Onboarding: first-time flow to upload CSV and set balance, paycheck, bonus date in one step.
