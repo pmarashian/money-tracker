@@ -14,9 +14,10 @@ export interface Transaction {
 }
 
 export interface RecurringPattern {
-  description: string;
+  name: string;
   amount: number;
   frequency: 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly';
+  typicalDayOfMonth?: number; // For monthly patterns
   confidence: number; // 0-1, higher is more confident
   averageAmount: number;
   transactionCount: number;
@@ -31,37 +32,43 @@ export interface RecurringPattern {
 export function detectRecurringTransactions(transactions: Transaction[]): RecurringPattern[] {
   const patterns: RecurringPattern[] = [];
 
-  // Group transactions by normalized merchant name (or description if not normalized) and amount
-  // This ensures consistent recurring detection using clean merchant names
-  const groups = new Map<string, Transaction[]>();
+  // Group transactions by normalized merchant name only
+  // For each merchant, collect all {date, amount} pairs
+  const merchantGroups = new Map<string, Array<{date: Date, amount: number, originalTx: Transaction}>>();
 
   for (const tx of transactions) {
+    // Only process debits (negative amounts)
+    if (tx.amount >= 0) continue;
+
     // Use normalized merchant if available, otherwise fall back to description
     const merchantName = tx.normalizedMerchant || tx.description;
-    const key = `${merchantName.trim().toLowerCase()}_${Math.round(tx.amount * 100)}`;
-    if (!groups.has(key)) {
-      groups.set(key, []);
+    const key = merchantName.trim().toLowerCase();
+
+    if (!merchantGroups.has(key)) {
+      merchantGroups.set(key, []);
     }
-    groups.get(key)!.push(tx);
+
+    merchantGroups.get(key)!.push({
+      date: new Date(tx.postingDate),
+      amount: tx.amount,
+      originalTx: tx
+    });
   }
 
-  // Analyze each group for recurring patterns
-  for (const [key, groupTxns] of groups) {
-    if (groupTxns.length < 3) {
-      continue; // Need at least 3 transactions to detect a pattern
+  // Analyze each merchant group for recurring patterns
+  for (const [merchantName, dateAmountPairs] of merchantGroups) {
+    if (dateAmountPairs.length < 2) {
+      continue; // Need at least 2 transactions to detect a pattern
     }
 
     // Sort by date
-    const sortedTxns = groupTxns.sort((a, b) =>
-      new Date(a.postingDate).getTime() - new Date(b.postingDate).getTime()
-    );
+    const sortedPairs = dateAmountPairs.sort((a, b) => a.date.getTime() - b.date.getTime());
 
     // Calculate date differences in days
     const dateDiffs: number[] = [];
-    for (let i = 1; i < sortedTxns.length; i++) {
+    for (let i = 1; i < sortedPairs.length; i++) {
       const diff = Math.round(
-        (new Date(sortedTxns[i].postingDate).getTime() -
-         new Date(sortedTxns[i-1].postingDate).getTime()) / (1000 * 60 * 60 * 24)
+        (sortedPairs[i].date.getTime() - sortedPairs[i-1].date.getTime()) / (1000 * 60 * 60 * 24)
       );
       dateDiffs.push(diff);
     }
@@ -79,22 +86,31 @@ export function detectRecurringTransactions(transactions: Transaction[]): Recurr
       continue; // Not confident enough
     }
 
-    const averageAmount = sortedTxns.reduce((sum, tx) => sum + tx.amount, 0) / sortedTxns.length;
+    // Calculate typical amount (average)
+    const amounts = sortedPairs.map(p => p.amount);
+    const averageAmount = amounts.reduce((sum, amt) => sum + amt, 0) / amounts.length;
+
+    // Use median amount as the representative amount
+    const sortedAmounts = [...amounts].sort((a, b) => a - b);
+    const medianAmount = sortedAmounts[Math.floor(sortedAmounts.length / 2)];
+
+    // Calculate typical day of month for monthly patterns
+    const typicalDayOfMonth = frequency === 'monthly' ? calculateTypicalDayOfMonth(sortedPairs) : undefined;
 
     // Predict next date
-    const lastDate = new Date(sortedTxns[sortedTxns.length - 1].postingDate);
+    const lastDate = sortedPairs[sortedPairs.length - 1].date;
     const nextDate = predictNextDate(lastDate, frequency);
 
     const pattern: RecurringPattern = {
-      // Use normalized merchant name for consistent pattern identification
-      description: sortedTxns[0].normalizedMerchant || sortedTxns[0].description.trim(),
-      amount: sortedTxns[0].amount,
+      name: merchantName,
+      amount: medianAmount,
       frequency,
+      typicalDayOfMonth,
       confidence,
       averageAmount,
-      transactionCount: sortedTxns.length,
-      firstDate: sortedTxns[0].postingDate,
-      lastDate: sortedTxns[sortedTxns.length - 1].postingDate,
+      transactionCount: sortedPairs.length,
+      firstDate: formatDate(sortedPairs[0].date),
+      lastDate: formatDate(sortedPairs[sortedPairs.length - 1].date),
       predictedNextDate: formatDate(nextDate),
     };
 
@@ -186,6 +202,30 @@ function predictNextDate(lastDate: Date, frequency: RecurringPattern['frequency'
   }
 
   return nextDate;
+}
+
+/**
+ * Calculate the typical day of month for recurring transactions
+ */
+function calculateTypicalDayOfMonth(dateAmountPairs: Array<{date: Date, amount: number, originalTx: Transaction}>): number {
+  const days = dateAmountPairs.map(p => p.date.getDate());
+
+  // Find the most common day
+  const dayCounts = new Map<number, number>();
+  for (const day of days) {
+    dayCounts.set(day, (dayCounts.get(day) || 0) + 1);
+  }
+
+  let mostCommonDay = days[0];
+  let maxCount = 0;
+  for (const [day, count] of dayCounts) {
+    if (count > maxCount) {
+      maxCount = count;
+      mostCommonDay = day;
+    }
+  }
+
+  return mostCommonDay;
 }
 
 /**
