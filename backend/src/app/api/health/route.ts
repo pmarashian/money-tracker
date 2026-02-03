@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '../../../lib/auth';
 import { redisOps, mtKeys } from '../../../lib/redis';
 import { calculateFinancialHealth, getDefaultHealthSettings, HealthResult } from '../../../lib/health';
+import { getDefaultUserSettings, UserSettings } from '../../../lib/settings';
 import { RecurringPattern, PayrollBonusEvent } from '../../../lib/recurring';
 
 export async function GET(request: NextRequest) {
@@ -19,16 +20,20 @@ export async function GET(request: NextRequest) {
     const payrollJson = await redisOps.get(payrollKey);
     const payrollBonusEvents: PayrollBonusEvent[] = payrollJson ? JSON.parse(payrollJson) : [];
 
-    // Get user settings from Redis (use defaults if not set)
+    // Get settings from Redis (use defaults if not set)
     const settingsKey = mtKeys.settings(user.id);
     const settingsJson = await redisOps.get(settingsKey);
-    const settings = settingsJson ? JSON.parse(settingsJson) : getDefaultHealthSettings();
+
+    // Parse as both health settings and user settings (they're stored together)
+    const healthSettings = settingsJson ? JSON.parse(settingsJson) : getDefaultHealthSettings();
+    const userSettings = settingsJson ? JSON.parse(settingsJson) : getDefaultUserSettings();
 
     // Calculate financial health
     const healthResult: HealthResult = calculateFinancialHealth(
       payrollBonusEvents,
       recurring,
-      settings
+      healthSettings,
+      userSettings
     );
 
     return NextResponse.json(healthResult);

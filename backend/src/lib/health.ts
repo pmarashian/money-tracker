@@ -3,6 +3,7 @@
  */
 
 import { RecurringPattern, PayrollBonusEvent } from './recurring';
+import { UserSettings } from './settings';
 
 export interface HealthSettings {
   notEnoughThreshold: number; // e.g., 0 - below this is "not_enough"
@@ -36,13 +37,16 @@ export function calculateFinancialHealth(
   payrollEvents: PayrollBonusEvent[],
   recurringPatterns: RecurringPattern[],
   settings: HealthSettings,
+  userSettings: UserSettings,
   startDate: Date = new Date()
 ): HealthResult {
-  // Find the next bonus date
-  const nextBonusDate = findNextBonusDate(payrollEvents, startDate);
+  // Find the next bonus date (use user setting if available, otherwise from payroll events)
+  const nextBonusDate = userSettings.nextBonusDate && userSettings.nextBonusDate.trim() !== ''
+    ? new Date(userSettings.nextBonusDate)
+    : findNextBonusDate(payrollEvents, startDate);
 
   // Project inflows (paychecks and bonus)
-  const inflows = projectInflows(payrollEvents, startDate, nextBonusDate);
+  const inflows = projectInflows(payrollEvents, userSettings, startDate, nextBonusDate);
 
   // Project outflows (recurring expenses)
   const outflows = projectOutflows(recurringPatterns, startDate);
@@ -94,25 +98,31 @@ function findNextBonusDate(payrollEvents: PayrollBonusEvent[], fromDate: Date): 
  */
 function projectInflows(
   payrollEvents: PayrollBonusEvent[],
+  userSettings: UserSettings,
   startDate: Date,
   nextBonusDate: Date | null
 ): ProjectedTransaction[] {
   const inflows: ProjectedTransaction[] = [];
 
-  // Find the most recent payroll amount to use for bi-weekly projections
-  const payrollAmounts = payrollEvents
-    .filter(event => event.type === 'payroll')
-    .map(event => event.amount)
-    .sort((a, b) => b - a); // Sort descending to get most recent/typical amounts first
+  // Use user-specified paycheck amount, or fall back to historical data
+  let paycheckAmount = userSettings.paycheckAmount;
 
-  if (payrollAmounts.length === 0) {
-    // No payroll data available
-    return inflows;
+  // If user didn't specify paycheck amount, calculate from historical data
+  if (paycheckAmount <= 0) {
+    const payrollAmounts = payrollEvents
+      .filter(event => event.type === 'payroll')
+      .map(event => event.amount)
+      .sort((a, b) => b - a); // Sort descending to get most recent/typical amounts first
+
+    if (payrollAmounts.length === 0) {
+      // No payroll data available and no user setting
+      return inflows;
+    }
+
+    // Use the median payroll amount as the typical paycheck
+    const sortedPayroll = payrollAmounts.sort((a, b) => a - b);
+    paycheckAmount = sortedPayroll[Math.floor(sortedPayroll.length / 2)];
   }
-
-  // Use the median payroll amount as the typical paycheck
-  const sortedPayroll = payrollAmounts.sort((a, b) => a - b);
-  const medianPayroll = sortedPayroll[Math.floor(sortedPayroll.length / 2)];
 
   // Determine bi-weekly pay schedule
   // For simplicity, assume paychecks occur every 14 days from the most recent payroll
@@ -152,7 +162,7 @@ function projectInflows(
     if (currentDate > startDate) {
       inflows.push({
         date: formatDate(currentDate),
-        amount: medianPayroll,
+        amount: paycheckAmount,
         description: 'Projected paycheck',
         type: 'payroll',
       });
@@ -161,17 +171,28 @@ function projectInflows(
 
   // Add the bonus if there's a next bonus date
   if (nextBonusDate && nextBonusDate > startDate) {
-    // Find the bonus amount from historical data
-    const bonusEvents = payrollEvents.filter(event => event.type === 'bonus');
-    if (bonusEvents.length > 0) {
-      // Use the most recent bonus amount
-      const recentBonus = bonusEvents.sort((a, b) =>
-        new Date(b.date).getTime() - new Date(a.date).getTime()
-      )[0];
+    // Use user-specified bonus amount, or fall back to historical data
+    let bonusAmount = userSettings.bonusAmount;
 
+    if (bonusAmount === undefined || bonusAmount <= 0) {
+      // Find the bonus amount from historical data
+      const bonusEvents = payrollEvents.filter(event => event.type === 'bonus');
+      if (bonusEvents.length > 0) {
+        // Use the most recent bonus amount
+        const recentBonus = bonusEvents.sort((a, b) =>
+          new Date(b.date).getTime() - new Date(a.date).getTime()
+        )[0];
+        bonusAmount = recentBonus.amount;
+      } else {
+        // No bonus amount available
+        bonusAmount = 0;
+      }
+    }
+
+    if (bonusAmount > 0) {
       inflows.push({
         date: formatDate(nextBonusDate),
-        amount: recentBonus.amount,
+        amount: bonusAmount,
         description: 'Projected bonus',
         type: 'bonus',
       });
