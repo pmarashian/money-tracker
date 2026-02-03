@@ -13,7 +13,6 @@ import {
   IonList,
   IonItem,
   IonLabel,
-  IonInput,
   IonButton,
   IonIcon,
   IonTextarea
@@ -22,7 +21,6 @@ import { send } from 'ionicons/icons'
 import { useHistory } from 'react-router-dom'
 
 const ChatPage: React.FC = () => {
-  const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
   const [messages, setMessages] = useState<Array<{role: 'user' | 'assistant', content: string, timestamp: Date}>>([])
@@ -36,14 +34,11 @@ const ChatPage: React.FC = () => {
 
   const checkSession = async () => {
     try {
-      const response = await fetch('http://localhost:3002/api/auth/session', {
+      const response = await fetch('http://localhost:3000/api/auth/session', {
         credentials: 'include',
       })
 
-      if (response.ok) {
-        const userData = await response.json()
-        setUser(userData)
-      } else {
+      if (!response.ok) {
         // Not logged in, redirect to login
         history.push('/login')
       }
@@ -64,7 +59,7 @@ const ChatPage: React.FC = () => {
     setSending(true)
 
     try {
-      const response = await fetch('http://localhost:3002/api/chat', {
+      const response = await fetch('http://localhost:3000/api/chat', {
         method: 'POST',
         credentials: 'include',
         headers: {

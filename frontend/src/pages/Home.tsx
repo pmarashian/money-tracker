@@ -35,7 +35,7 @@ const HomePage: React.FC = () => {
 
   const checkSession = async () => {
     try {
-      const response = await fetch('http://localhost:3002/api/auth/session', {
+      const response = await fetch('http://localhost:3000/api/auth/session', {
         credentials: 'include',
       })
 
@@ -56,7 +56,7 @@ const HomePage: React.FC = () => {
 
   const handleLogout = async () => {
     try {
-      await fetch('http://localhost:3002/api/auth/logout', {
+      await fetch('http://localhost:3000/api/auth/logout', {
         method: 'POST',
         credentials: 'include',
       })

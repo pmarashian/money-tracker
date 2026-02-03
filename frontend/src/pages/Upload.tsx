@@ -18,9 +18,10 @@ import { cloudUpload } from 'ionicons/icons'
 import { useHistory } from 'react-router-dom'
 
 const UploadPage: React.FC = () => {
-  const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
+  const [uploadResult, setUploadResult] = useState<any>(null)
+  const [error, setError] = useState<string | null>(null)
   const history = useHistory()
 
   useEffect(() => {
@@ -30,14 +31,11 @@ const UploadPage: React.FC = () => {
 
   const checkSession = async () => {
     try {
-      const response = await fetch('http://localhost:3002/api/auth/session', {
+      const response = await fetch('http://localhost:3000/api/auth/session', {
         credentials: 'include',
       })
 
-      if (response.ok) {
-        const userData = await response.json()
-        setUser(userData)
-      } else {
+      if (!response.ok) {
         // Not logged in, redirect to login
         history.push('/login')
       }
@@ -54,12 +52,14 @@ const UploadPage: React.FC = () => {
     if (!file) return
 
     setUploading(true)
+    setUploadResult(null)
+    setError(null)
 
     try {
       const formData = new FormData()
       formData.append('file', file)
 
-      const response = await fetch('http://localhost:3002/api/transactions/upload', {
+      const response = await fetch('http://localhost:3000/api/transactions/upload', {
         method: 'POST',
         credentials: 'include',
         body: formData,
@@ -67,15 +67,16 @@ const UploadPage: React.FC = () => {
 
       if (response.ok) {
         const result = await response.json()
+        setUploadResult(result)
         console.log('Upload successful:', result)
-        // Show success message or redirect
       } else {
-        console.error('Upload failed')
-        // Show error message
+        const errorData = await response.json()
+        setError(errorData.error || 'Upload failed')
+        console.error('Upload failed:', errorData)
       }
     } catch (err) {
+      setError('Network error occurred. Please try again.')
       console.error('Upload error:', err)
-      // Show error message
     } finally {
       setUploading(false)
     }
@@ -145,6 +146,67 @@ const UploadPage: React.FC = () => {
                   <IonText style={{ display: 'block', textAlign: 'center', marginTop: '10px' }}>
                     Processing your transactions...
                   </IonText>
+                </div>
+              )}
+
+              {uploadResult && (
+                <div style={{ marginTop: '20px' }}>
+                  <IonCard color="success">
+                    <IonCardContent>
+                      <IonText color="success">
+                        <h3>✅ Upload Successful!</h3>
+                        <p>
+                          Processed {uploadResult.transactionCount} transactions<br/>
+                          Detected {uploadResult.recurringPatternsCount} recurring patterns<br/>
+                          Found {uploadResult.payrollBonusEventsCount} payroll/bonus events
+                        </p>
+                        <div style={{ marginTop: '15px' }}>
+                          <IonButton
+                            fill="clear"
+                            color="success"
+                            onClick={() => history.push('/tabs/home')}
+                            style={{ marginRight: '10px' }}
+                          >
+                            View Health Summary
+                          </IonButton>
+                          <IonButton
+                            fill="clear"
+                            color="success"
+                            onClick={() => history.push('/tabs/expenses')}
+                          >
+                            View Recurring Expenses
+                          </IonButton>
+                        </div>
+                      </IonText>
+                    </IonCardContent>
+                  </IonCard>
+                </div>
+              )}
+
+              {error && (
+                <div style={{ marginTop: '20px' }}>
+                  <IonCard color="danger">
+                    <IonCardContent>
+                      <IonText color="danger">
+                        <h3>❌ Upload Failed</h3>
+                        <p>{error}</p>
+                        <div style={{ marginTop: '10px' }}>
+                          <IonButton
+                            fill="clear"
+                            color="danger"
+                            onClick={() => {
+                              setError(null)
+                              // Clear the file input
+                              const fileInput = document.getElementById('file-upload') as HTMLInputElement
+                              if (fileInput) fileInput.value = ''
+                            }}
+                          >
+                            Try Again
+                          </IonButton>
+                        </div>
+                      </IonText>
+                    </IonCardContent>
+                  </IonCard>
                 </div>
               )}
             </IonCardContent>

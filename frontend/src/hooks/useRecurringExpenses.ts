@@ -30,7 +30,7 @@ export function useRecurringExpenses(): UseRecurringExpensesReturn {
       setLoading(true);
       setError(null);
 
-      const response = await fetch('http://localhost:3002/api/transactions/recurring', {
+      const response = await fetch('http://localhost:3000/api/transactions/recurring', {
         credentials: 'include',
       });
 

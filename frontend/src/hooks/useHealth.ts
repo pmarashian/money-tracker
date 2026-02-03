@@ -38,7 +38,7 @@ export function useHealth(): UseHealthReturn {
       setLoading(true);
       setError(null);
 
-      const response = await fetch('http://localhost:3002/api/health', {
+      const response = await fetch('http://localhost:3000/api/health', {
         credentials: 'include',
       });
 
