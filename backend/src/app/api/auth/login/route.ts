@@ -3,6 +3,15 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { mtKeys, redisOps } from '@/lib/redis';
 
+export async function OPTIONS() {
+  const response = new NextResponse(null, { status: 204 });
+  response.headers.set('Access-Control-Allow-Origin', 'http://localhost:3001');
+  response.headers.set('Access-Control-Allow-Credentials', 'true');
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  return response;
+}
+
 interface LoginRequest {
   email: string;
   password: string;
@@ -22,28 +31,37 @@ export async function POST(request: NextRequest) {
     // Validate input
     const { email, password } = body;
     if (!email || !password) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { error: 'Email and password are required' },
         { status: 400 }
       );
+      response.headers.set('Access-Control-Allow-Origin', 'http://localhost:3001');
+      response.headers.set('Access-Control-Allow-Credentials', 'true');
+      return response;
     }
 
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { error: 'Invalid email format' },
         { status: 400 }
       );
+      response.headers.set('Access-Control-Allow-Origin', 'http://localhost:3001');
+      response.headers.set('Access-Control-Allow-Credentials', 'true');
+      return response;
     }
 
     // Get user from Redis
     const userJson = await redisOps.get(mtKeys.user.byEmail(email));
     if (!userJson) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { error: 'Invalid email or password' },
         { status: 401 }
       );
+      response.headers.set('Access-Control-Allow-Origin', 'http://localhost:3001');
+      response.headers.set('Access-Control-Allow-Credentials', 'true');
+      return response;
     }
 
     // Parse user record
@@ -52,10 +70,13 @@ export async function POST(request: NextRequest) {
     // Verify password
     const isValidPassword = await bcrypt.compare(password, userRecord.passwordHash);
     if (!isValidPassword) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { error: 'Invalid email or password' },
         { status: 401 }
       );
+      response.headers.set('Access-Control-Allow-Origin', 'http://localhost:3001');
+      response.headers.set('Access-Control-Allow-Credentials', 'true');
+      return response;
     }
 
     // Generate session ID
@@ -89,6 +110,10 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Add CORS headers
+    response.headers.set('Access-Control-Allow-Origin', 'http://localhost:3001');
+    response.headers.set('Access-Control-Allow-Credentials', 'true');
+
     // Set HTTP-only cookie with JWT token
     response.cookies.set('auth-token', token, {
       httpOnly: true,
@@ -102,9 +127,12 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Login error:', error);
-    return NextResponse.json(
+    const response = NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     );
+    response.headers.set('Access-Control-Allow-Origin', 'http://localhost:3001');
+    response.headers.set('Access-Control-Allow-Credentials', 'true');
+    return response;
   }
 }

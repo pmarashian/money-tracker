@@ -3,6 +3,15 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { mtKeys, redisOps } from '@/lib/redis';
 
+export async function OPTIONS() {
+  const response = new NextResponse(null, { status: 204 });
+  response.headers.set('Access-Control-Allow-Origin', 'http://localhost:3001');
+  response.headers.set('Access-Control-Allow-Credentials', 'true');
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  return response;
+}
+
 interface RegisterRequest {
   email: string;
   password: string;
@@ -22,36 +31,52 @@ export async function POST(request: NextRequest) {
     // Validate input
     const { email, password } = body;
     if (!email || !password) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { error: 'Email and password are required' },
         { status: 400 }
       );
+      // Add CORS headers
+      response.headers.set('Access-Control-Allow-Origin', 'http://localhost:3001');
+      response.headers.set('Access-Control-Allow-Credentials', 'true');
+      return response;
     }
 
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { error: 'Invalid email format' },
         { status: 400 }
       );
+      // Add CORS headers
+      response.headers.set('Access-Control-Allow-Origin', 'http://localhost:3001');
+      response.headers.set('Access-Control-Allow-Credentials', 'true');
+      return response;
     }
 
     // Password strength validation
     if (password.length < 8) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { error: 'Password must be at least 8 characters long' },
         { status: 400 }
       );
+      // Add CORS headers
+      response.headers.set('Access-Control-Allow-Origin', 'http://localhost:3001');
+      response.headers.set('Access-Control-Allow-Credentials', 'true');
+      return response;
     }
 
     // Check if user already exists
     const existingUser = await redisOps.get(mtKeys.user.byEmail(email));
     if (existingUser) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { error: 'User with this email already exists' },
         { status: 409 }
       );
+      // Add CORS headers
+      response.headers.set('Access-Control-Allow-Origin', 'http://localhost:3001');
+      response.headers.set('Access-Control-Allow-Credentials', 'true');
+      return response;
     }
 
     // Generate user ID
@@ -92,6 +117,10 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Add CORS headers
+    response.headers.set('Access-Control-Allow-Origin', 'http://localhost:3001');
+    response.headers.set('Access-Control-Allow-Credentials', 'true');
+
     // Set HTTP-only cookie with JWT token
     response.cookies.set('auth-token', token, {
       httpOnly: true,
@@ -105,9 +134,13 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Registration error:', error);
-    return NextResponse.json(
+    const response = NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     );
+    // Add CORS headers
+    response.headers.set('Access-Control-Allow-Origin', 'http://localhost:3001');
+    response.headers.set('Access-Control-Allow-Credentials', 'true');
+    return response;
   }
 }
