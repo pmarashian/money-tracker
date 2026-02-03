@@ -3,8 +3,8 @@ import Redis from 'ioredis';
 // Redis client instance
 let redisClient: Redis | null = null;
 
-// In-memory store for development when Redis is not available
-const memoryStore = new Map<string, string>();
+// Global memory store for development when Redis is not available (persistent across requests)
+const globalMemoryStore = new Map<string, string>();
 
 /**
  * Get the Redis client instance, creating it if it doesn't exist
@@ -99,8 +99,8 @@ export const redisOps = {
       const client = getRedisClient();
       return await client.get(key);
     } catch (error) {
-      // Fallback to memory store
-      return memoryStore.get(key) || null;
+      // Fallback to global memory store
+      return globalMemoryStore.get(key) || null;
     }
   },
 
@@ -115,8 +115,8 @@ export const redisOps = {
       }
       return await client.set(key, value);
     } catch (error) {
-      // Fallback to memory store
-      memoryStore.set(key, value);
+      // Fallback to global memory store
+      globalMemoryStore.set(key, value);
       // Note: TTL not implemented in memory store
       return 'OK';
     }
@@ -130,9 +130,9 @@ export const redisOps = {
       const client = getRedisClient();
       return await client.del(key);
     } catch (error) {
-      // Fallback to memory store
-      const existed = memoryStore.has(key);
-      memoryStore.delete(key);
+      // Fallback to global memory store
+      const existed = globalMemoryStore.has(key);
+      globalMemoryStore.delete(key);
       return existed ? 1 : 0;
     }
   },
@@ -145,8 +145,8 @@ export const redisOps = {
       const client = getRedisClient();
       return await client.exists(key);
     } catch (error) {
-      // Fallback to memory store
-      return memoryStore.has(key) ? 1 : 0;
+      // Fallback to global memory store
+      return globalMemoryStore.has(key) ? 1 : 0;
     }
   },
 
@@ -158,7 +158,7 @@ export const redisOps = {
       const client = getRedisClient();
       return await client.expire(key, ttl);
     } catch (error) {
-      // Fallback to memory store - not implemented
+      // Fallback to global memory store - not implemented
       return 0;
     }
   },
