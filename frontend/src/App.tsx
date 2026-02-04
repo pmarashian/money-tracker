@@ -1,8 +1,6 @@
 import {
   IonApp,
-  IonRouterOutlet,
   IonSplitPane,
-  IonTabs,
   IonTabBar,
   IonTabButton,
   IonIcon,
