@@ -65,3 +65,6 @@ coverage/
 # IDE and OS directories
 tasks/
 docs/
+
+logs/
+log-analysis/
