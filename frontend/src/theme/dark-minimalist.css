@@ -166,3 +166,42 @@ a:hover, ion-router-link:hover {
   --ion-text-color: #ffffff !important;
   --ion-text-color-rgb: 255, 255, 255 !important;
 }
+
+/* Chat Message Styling */
+.user-message {
+  margin-left: 20%;
+  background: var(--ion-color-step-100) !important;
+  border: 1px solid var(--ion-color-step-300) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.assistant-message {
+  margin-right: 20%;
+  background: var(--ion-color-step-50) !important;
+  border: 1px solid var(--ion-color-step-400) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.message-input {
+  --background: transparent !important;
+  --border-color: var(--ion-color-step-400) !important;
+  --border-radius: 0 !important;
+  --padding-start: 16px !important;
+  --padding-end: 16px !important;
+  margin: 8px !important;
+}
+
+.message-input ion-input {
+  --background: transparent !important;
+  --border: none !important;
+  --padding-start: 0 !important;
+  --padding-end: 0 !important;
+}
+
+/* Ensure footer has proper spacing */
+.ion-footer {
+  border-top: 1px solid var(--ion-color-step-300) !important;
+  background: var(--ion-background-color) !important;
+}
