@@ -1,14 +1,7 @@
 import { redisOps } from './redis';
+import { NormalizedTransaction } from './csv';
 
-export interface Transaction {
-  details: string;
-  postingDate: string; // MM/DD/YYYY format
-  description: string;
-  amount: number;
-  type: string;
-  balance: number;
-  checkOrSlipNumber?: string;
-}
+export type Transaction = NormalizedTransaction;
 
 export interface RecurringPattern {
   id: string;
@@ -41,10 +34,8 @@ export async function detectRecurringTransactions(userId: string): Promise<Recur
   const patterns = new Map<string, Transaction[]>();
 
   for (const tx of transactions) {
-    // Create a pattern key based on description (simplified) and amount
-    // In a real implementation, this would be more sophisticated
-    const descriptionKey = tx.description.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20);
-    const patternKey = `${descriptionKey}_${Math.abs(tx.amount)}`;
+    // Use normalized merchant name for consistent pattern matching
+    const patternKey = `${tx.normalizedMerchant}_${Math.abs(tx.amount)}`;
 
     if (!patterns.has(patternKey)) {
       patterns.set(patternKey, []);
@@ -55,7 +46,7 @@ export async function detectRecurringTransactions(userId: string): Promise<Recur
   // Filter for patterns that appear multiple times
   const recurringPatterns: RecurringPattern[] = [];
 
-  for (const [patternKey, txs] of patterns.entries()) {
+  for (const [patternKey, txs] of Array.from(patterns.entries())) {
     if (txs.length >= 3) { // At least 3 occurrences to be considered recurring
       const sortedTxs = txs.sort((a: Transaction, b: Transaction) =>
         new Date(a.postingDate).getTime() - new Date(b.postingDate).getTime()
