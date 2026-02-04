@@ -9,8 +9,24 @@ import {
   IonTitle,
   IonToolbar,
 } from '@ionic/react';
+import { useNavigate } from 'react-router-dom';
 
 const Menu: React.FC = () => {
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await fetch('http://localhost:3000/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      // Redirect to login after logout
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+
   return (
     <IonMenu contentId="main">
       <IonHeader>
@@ -23,8 +39,11 @@ const Menu: React.FC = () => {
           <IonListHeader>
             <IonLabel>Money Tracker</IonLabel>
           </IonListHeader>
-          <IonItem button>
+          <IonItem button onClick={() => navigate('/home')}>
             <IonLabel>Home</IonLabel>
+          </IonItem>
+          <IonItem button onClick={handleLogout}>
+            <IonLabel>Logout</IonLabel>
           </IonItem>
         </IonList>
       </IonContent>

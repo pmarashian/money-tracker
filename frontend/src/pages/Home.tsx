@@ -1,6 +1,7 @@
 import {
   IonContent,
   IonHeader,
+  IonMenuButton,
   IonPage,
   IonTitle,
   IonToolbar,
@@ -11,18 +12,20 @@ const Home: React.FC = () => {
     <IonPage>
       <IonHeader>
         <IonToolbar>
+          <IonMenuButton slot="start" />
           <IonTitle>Money Tracker</IonTitle>
         </IonToolbar>
       </IonHeader>
       <IonContent fullscreen>
         <IonHeader collapse="condense">
           <IonToolbar>
+            <IonMenuButton slot="start" />
             <IonTitle size="large">Money Tracker</IonTitle>
           </IonToolbar>
         </IonHeader>
         <div className="ion-padding">
           <h1>Welcome to Money Tracker</h1>
-          <p>Track your expenses and manage your budget.</p>
+          <p>You are successfully logged in! Track your expenses and manage your budget.</p>
         </div>
       </IonContent>
     </IonPage>

@@ -1,26 +1,25 @@
-import { IonApp, IonContent, IonHeader, IonPage, IonTitle, IonToolbar } from '@ionic/react';
+import { IonApp, IonRouterOutlet, IonSplitPane } from '@ionic/react';
+import { IonReactRouter } from '@ionic/react-router';
+import { Route, Navigate } from 'react-router-dom';
+import Menu from './components/Menu';
+import Home from './pages/Home';
+import Login from './pages/Login';
+import Register from './pages/Register';
 
 const App: React.FC = () => {
   return (
     <IonApp>
-      <IonPage>
-        <IonHeader>
-          <IonToolbar>
-            <IonTitle>Money Tracker</IonTitle>
-          </IonToolbar>
-        </IonHeader>
-        <IonContent fullscreen>
-          <IonHeader collapse="condense">
-            <IonToolbar>
-              <IonTitle size="large">Money Tracker</IonTitle>
-            </IonToolbar>
-          </IonHeader>
-          <div className="ion-padding">
-            <h1>Welcome to Money Tracker</h1>
-            <p>Track your expenses and manage your budget with this Ionic React app.</p>
-          </div>
-        </IonContent>
-      </IonPage>
+      <IonReactRouter>
+        <IonSplitPane contentId="main">
+          <Menu />
+          <IonRouterOutlet id="main">
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/home" element={<Home />} />
+            <Route path="/" element={<Navigate to="/login" replace />} />
+          </IonRouterOutlet>
+        </IonSplitPane>
+      </IonReactRouter>
     </IonApp>
   );
 };
