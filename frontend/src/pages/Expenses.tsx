@@ -14,6 +14,7 @@ import {
 } from '@ionic/react';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { apiGet } from '../lib/api';
 
 interface RecurringPattern {
   name: string;
@@ -33,9 +34,7 @@ const Expenses: React.FC = () => {
       if (!user) return;
 
       try {
-        const response = await fetch('http://localhost:3000/api/transactions/recurring', {
-          credentials: 'include',
-        });
+        const response = await apiGet('/api/transactions/recurring');
 
         if (!response.ok) {
           throw new Error('Failed to fetch recurring expenses');

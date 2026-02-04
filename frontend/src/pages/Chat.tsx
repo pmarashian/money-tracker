@@ -19,6 +19,7 @@ import {
 } from '@ionic/react';
 import { send } from 'ionicons/icons';
 import { useAuth } from '../hooks/useAuth';
+import { apiPost } from '../lib/api';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -70,14 +71,7 @@ const Chat: React.FC = () => {
     setMessages(prev => [...prev, userMessage]);
 
     try {
-      const response = await fetch('http://localhost:3000/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ message: messageToSend }),
-      });
+      const response = await apiPost('/api/chat', { message: messageToSend });
 
       if (!response.ok) {
         const errorData = await response.json();

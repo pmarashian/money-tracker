@@ -10,16 +10,14 @@ import {
   IonToolbar,
 } from '@ionic/react';
 import { useNavigate } from 'react-router-dom';
+import { apiPost } from '../lib/api';
 
 const Menu: React.FC = () => {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
     try {
-      await fetch('http://localhost:3000/api/auth/logout', {
-        method: 'POST',
-        credentials: 'include',
-      });
+      await apiPost('/api/auth/logout');
       // Redirect to login after logout
       navigate('/login');
     } catch (error) {

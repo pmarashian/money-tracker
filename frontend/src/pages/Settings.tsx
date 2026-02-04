@@ -17,6 +17,7 @@ import {
   IonCardContent,
 } from '@ionic/react';
 import { useState, useEffect } from 'react';
+import { apiGet, apiPatch } from '../lib/api';
 
 interface UserSettings {
   balance: number;
@@ -45,10 +46,7 @@ const Settings: React.FC = () => {
 
   const loadSettings = async () => {
     try {
-      const response = await fetch('/api/settings', {
-        method: 'GET',
-        credentials: 'include',
-      });
+      const response = await apiGet('/api/settings');
 
       if (response.ok) {
         const data = await response.json();
@@ -79,14 +77,7 @@ const Settings: React.FC = () => {
         return;
       }
 
-      const response = await fetch('/api/settings', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify(settings),
-      });
+      const response = await apiPatch('/api/settings', settings);
 
       if (response.ok) {
         showAlertMessage('Settings saved successfully!', 'success');

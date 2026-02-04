@@ -1,4 +1,5 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import { apiGet } from '../lib/api';
 
 interface User {
   id: string;
@@ -19,9 +20,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const checkAuth = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/auth/session', {
-        credentials: 'include', // Include cookies for authentication
-      });
+      const response = await apiGet('/api/auth/session');
 
       if (response.ok) {
         const userData = await response.json();

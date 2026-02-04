@@ -18,6 +18,7 @@ import {
 } from '@ionic/react';
 import { useAuth } from '../hooks/useAuth';
 import { cashOutline, calendarOutline, settingsOutline } from 'ionicons/icons';
+import { apiGet } from '../lib/api';
 
 interface HealthData {
   status: 'not_enough' | 'enough' | 'too_much';
@@ -53,9 +54,7 @@ const Home: React.FC = () => {
 
   const fetchHealthData = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/health', {
-        credentials: 'include',
-      });
+      const response = await apiGet('/api/health');
 
       if (response.ok) {
         const data = await response.json();
@@ -73,9 +72,7 @@ const Home: React.FC = () => {
 
   const fetchSettings = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/settings', {
-        credentials: 'include',
-      });
+      const response = await apiGet('/api/settings');
 
       if (response.ok) {
         const data = await response.json();

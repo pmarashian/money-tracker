@@ -14,6 +14,7 @@ import {
   IonAlert,
   IonText,
 } from '@ionic/react';
+import { apiRequest } from '../lib/api';
 
 const Upload: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -56,10 +57,9 @@ const Upload: React.FC = () => {
       const formData = new FormData();
       formData.append('file', selectedFile);
 
-      const response = await fetch('http://localhost:3000/api/transactions/upload', {
+      const response = await apiRequest('/api/transactions/upload', {
         method: 'POST',
         body: formData,
-        credentials: 'include',
       });
 
       const result = await response.json();

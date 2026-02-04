@@ -15,6 +15,7 @@ import {
   IonAlert,
 } from '@ionic/react';
 import { useNavigate } from 'react-router-dom';
+import { apiPost } from '../lib/api';
 
 const Register: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -46,14 +47,7 @@ const Register: React.FC = () => {
     }
 
     try {
-      const response = await fetch('http://localhost:3000/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include', // Include cookies for session management
-        body: JSON.stringify({ email, password }),
-      });
+      const response = await apiPost('/api/auth/register', { email, password });
 
       const data = await response.json();
 
