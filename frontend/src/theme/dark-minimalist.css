@@ -1,0 +1,168 @@
+/* Dark Minimalist Theme Overrides */
+
+/* Force dark theme only */
+:root {
+  color-scheme: dark;
+  --ion-color-scheme: dark;
+}
+
+/* Retro Font Classes */
+.font-heading {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 1.2em;
+  letter-spacing: 0.5px;
+}
+
+.font-body {
+  font-family: 'VT323', monospace;
+  font-size: 1.1em;
+  line-height: 1.4;
+}
+
+/* Minimalist Dark Theme - Override Ionic defaults */
+.ion-page {
+  --ion-background-color: #000000;
+  --ion-background-color-rgb: 0, 0, 0;
+  --ion-text-color: #ffffff;
+  --ion-text-color-rgb: 255, 255, 255;
+  --ion-color-step-50: #0a0a0a;
+  --ion-color-step-100: #1a1a1a;
+  --ion-color-step-150: #262626;
+  --ion-color-step-200: #333333;
+  --ion-color-step-250: #404040;
+  --ion-color-step-300: #4d4d4d;
+  --ion-color-step-350: #595959;
+  --ion-color-step-400: #666666;
+  --ion-color-step-450: #737373;
+  --ion-color-step-500: #808080;
+  --ion-color-step-550: #8c8c8c;
+  --ion-color-step-600: #999999;
+  --ion-color-step-650: #a6a6a6;
+  --ion-color-step-700: #b3b3b3;
+  --ion-color-step-750: #bfbfbf;
+  --ion-color-step-800: #cccccc;
+  --ion-color-step-850: #d9d9d9;
+  --ion-color-step-900: #e6e6e6;
+  --ion-color-step-950: #f2f2f2;
+}
+
+/* Remove heavy shadows - minimalist approach */
+.ion-card,
+.ion-item,
+.ion-button,
+.ion-toolbar {
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+
+/* 1px borders only */
+.ion-card,
+.ion-item {
+  border: 1px solid var(--ion-color-step-300) !important;
+  border-radius: 0 !important;
+}
+
+/* Buttons - simple flat design */
+.ion-button {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  border: 1px solid var(--ion-color-step-400) !important;
+  background: transparent !important;
+  color: var(--ion-text-color) !important;
+  font-weight: normal !important;
+  text-transform: none !important;
+  letter-spacing: 1px;
+}
+
+.ion-button:hover {
+  background: var(--ion-color-step-100) !important;
+  border-color: var(--ion-color-step-200) !important;
+}
+
+/* Form inputs - minimalist */
+.ion-input,
+.ion-textarea {
+  border: 1px solid var(--ion-color-step-400) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--ion-text-color) !important;
+}
+
+.ion-input:focus,
+.ion-textarea:focus {
+  border-color: var(--ion-color-step-200) !important;
+  box-shadow: none !important;
+}
+
+/* Toolbar - minimalist */
+.ion-toolbar {
+  border-bottom: 1px solid var(--ion-color-step-300) !important;
+  background: var(--ion-background-color) !important;
+}
+
+/* Content padding - consistent minimalist spacing */
+.ion-content {
+  --padding-start: 16px;
+  --padding-end: 16px;
+  --padding-top: 16px;
+  --padding-bottom: 16px;
+}
+
+/* Typography - apply retro fonts */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading) !important;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+body, p, span, div {
+  font-family: var(--font-body) !important;
+}
+
+/* Links - minimalist styling */
+a, ion-router-link {
+  color: var(--ion-color-primary) !important;
+  text-decoration: none !important;
+  border-bottom: 1px solid transparent;
+}
+
+a:hover, ion-router-link:hover {
+  border-bottom-color: var(--ion-color-primary) !important;
+}
+
+/* Alerts and modals - minimalist */
+.ion-alert,
+.ion-modal {
+  border-radius: 0 !important;
+  border: 1px solid var(--ion-color-step-300) !important;
+  box-shadow: none !important;
+}
+
+/* Loading indicators - minimalist */
+.ion-loading {
+  border-radius: 0 !important;
+  border: 1px solid var(--ion-color-step-300) !important;
+  box-shadow: none !important;
+}
+
+/* Remove all Ionic decorative elements */
+.ion-card-header::after,
+.ion-item-divider::after {
+  display: none !important;
+}
+
+/* Ensure dark theme is always applied */
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: dark;
+  }
+}
+
+/* Override any light theme attempts */
+[data-theme="light"],
+.light-theme {
+  --ion-background-color: #000000 !important;
+  --ion-background-color-rgb: 0, 0, 0 !important;
+  --ion-text-color: #ffffff !important;
+  --ion-text-color-rgb: 255, 255, 255 !important;
+}

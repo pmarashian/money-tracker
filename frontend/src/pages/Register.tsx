@@ -82,8 +82,8 @@ const Register: React.FC = () => {
       </IonHeader>
       <IonContent fullscreen className="ion-padding">
         <div className="ion-text-center ion-margin-bottom">
-          <h2>Create Account</h2>
-          <p>Join Money Tracker to manage your expenses</p>
+          <h2 className="font-heading">Create Account</h2>
+          <p className="font-body">Join Money Tracker to manage your expenses</p>
         </div>
 
         <form onSubmit={handleRegister}>

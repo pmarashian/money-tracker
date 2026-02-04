@@ -66,8 +66,8 @@ const Login: React.FC = () => {
       </IonHeader>
       <IonContent fullscreen className="ion-padding">
         <div className="ion-text-center ion-margin-bottom">
-          <h2>Welcome Back</h2>
-          <p>Sign in to your Money Tracker account</p>
+          <h2 className="font-heading">Welcome Back</h2>
+          <p className="font-body">Sign in to your Money Tracker account</p>
         </div>
 
         <form onSubmit={handleLogin}>

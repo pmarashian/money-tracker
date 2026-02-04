@@ -22,6 +22,9 @@ import '@ionic/react/css/display.css';
 /* Theme variables */
 import './theme/variables.css';
 
+/* Dark Minimalist Theme */
+import './theme/dark-minimalist.css';
+
 setupIonicReact();
 
 const container = document.getElementById('root');

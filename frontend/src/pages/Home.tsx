@@ -24,8 +24,8 @@ const Home: React.FC = () => {
           </IonToolbar>
         </IonHeader>
         <div className="ion-padding">
-          <h1>Welcome to Money Tracker</h1>
-          <p>You are successfully logged in! Track your expenses and manage your budget.</p>
+          <h1 className="font-heading">Welcome to Money Tracker</h1>
+          <p className="font-body">You are successfully logged in! Track your expenses and manage your budget.</p>
         </div>
       </IonContent>
     </IonPage>
