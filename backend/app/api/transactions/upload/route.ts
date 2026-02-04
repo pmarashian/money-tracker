@@ -3,6 +3,7 @@ import { getCurrentUser, requireAuth } from '../../../../lib/auth';
 import { redisOps } from '../../../../lib/redis';
 import { detectRecurringTransactions, storeRecurringPatterns, Transaction } from '../../../../lib/recurring';
 import { parseChaseCSV, validateTransactionsForRecurring } from '../../../../lib/csv';
+import { detectPayrollAndBonus, storePayrollAndBonus } from '../../../../lib/payroll';
 
 export async function POST(request: NextRequest) {
   try {
@@ -48,11 +49,16 @@ export async function POST(request: NextRequest) {
     const recurringPatterns = await detectRecurringTransactions(user.id);
     await storeRecurringPatterns(user.id, recurringPatterns);
 
+    // Run payroll and bonus detection
+    const payrollEvents = await detectPayrollAndBonus(user.id);
+    await storePayrollAndBonus(user.id, payrollEvents);
+
     return NextResponse.json({
       success: true,
       message: 'Transactions uploaded successfully',
       rowCount: transactions.length,
-      recurringPatternsDetected: recurringPatterns.length
+      recurringPatternsDetected: recurringPatterns.length,
+      payrollEventsDetected: payrollEvents.length
     });
 
   } catch (error) {
