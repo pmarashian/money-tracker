@@ -114,22 +114,6 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Set CORS headers directly in the response
-    const allowedOrigins = process.env.CORS_ORIGINS
-      ? process.env.CORS_ORIGINS.split(',')
-      : ['http://localhost:3001', 'https://your-production-domain.com'];
-
-    const origin = request.headers.get('origin');
-    const isAllowedOrigin = origin && allowedOrigins.includes(origin);
-
-    if (isAllowedOrigin) {
-      response.headers.set('Access-Control-Allow-Origin', origin);
-      response.headers.set('Access-Control-Allow-Credentials', 'true');
-    }
-
-    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-
     // Set HTTP-only cookie using Set-Cookie header
     const cookieValue = `auth-token=${token}; HttpOnly; Path=/; Max-Age=${60 * 60 * 24 * 7}; SameSite=lax${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`;
     response.headers.set('Set-Cookie', cookieValue);
@@ -143,29 +127,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-/**
- * OPTIONS handler for CORS preflight requests
- */
-export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
-  const response = new NextResponse(null, { status: 200 });
-
-  // Set CORS headers
-  const allowedOrigins = process.env.CORS_ORIGINS
-    ? process.env.CORS_ORIGINS.split(',')
-    : ['http://localhost:3001', 'https://your-production-domain.com'];
-
-  const origin = request.headers.get('origin');
-  const isAllowedOrigin = origin && allowedOrigins.includes(origin);
-
-  if (isAllowedOrigin) {
-    response.headers.set('Access-Control-Allow-Origin', origin);
-    response.headers.set('Access-Control-Allow-Credentials', 'true');
-  }
-
-  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-
-  return response;
 }

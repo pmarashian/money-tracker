@@ -13,18 +13,6 @@ export function middleware(request: NextRequest) {
   const origin = request.headers.get('origin')
   const isAllowedOrigin = origin && allowedOrigins.includes(origin)
 
-  // Create response
-  const response = NextResponse.next()
-
-  // Set CORS headers for all requests
-  if (isAllowedOrigin) {
-    response.headers.set('Access-Control-Allow-Origin', origin)
-    response.headers.set('Access-Control-Allow-Credentials', 'true')
-  }
-
-  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH')
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With')
-
   // Handle preflight requests
   if (request.method === 'OPTIONS') {
     const preflightResponse = new NextResponse(null, { status: 200 })
@@ -37,7 +25,9 @@ export function middleware(request: NextRequest) {
     return preflightResponse
   }
 
-  return response
+  // For non-preflight requests, let next.config.js handle the headers
+  // This middleware now only handles OPTIONS preflight requests
+  return NextResponse.next()
 }
 
 export const config = {
