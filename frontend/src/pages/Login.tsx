@@ -43,7 +43,7 @@ const Login: React.FC = () => {
 
       if (response.ok) {
         // Success - redirect to home
-        navigate('/home');
+        navigate('/app/home');
       } else {
         // Error - show error message
         setError(data.message || 'Login failed');

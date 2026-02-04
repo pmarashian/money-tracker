@@ -39,7 +39,7 @@ const Menu: React.FC = () => {
           <IonListHeader>
             <IonLabel>Money Tracker</IonLabel>
           </IonListHeader>
-          <IonItem button onClick={() => navigate('/home')}>
+          <IonItem button onClick={() => navigate('/app/home')}>
             <IonLabel>Home</IonLabel>
           </IonItem>
           <IonItem button onClick={handleLogout}>
