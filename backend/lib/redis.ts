@@ -51,6 +51,9 @@ export const redisKeys = {
   // Recurring transactions keys
   recurring: (userId: string) => `mt:recurring:${userId}`,
 
+  // Payroll keys
+  payroll: (userId: string) => `mt:payroll:${userId}`,
+
   // Chat keys
   chat: (userId: string) => `mt:chat:${userId}`,
 };

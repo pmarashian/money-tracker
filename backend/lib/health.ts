@@ -1,11 +1,7 @@
-import { redisOps } from './redis';
+import { redisOps, redisKeys } from './redis';
 import { RecurringPattern } from './recurring';
 import { IncomeEvent } from './payroll';
-
-export interface HealthSettings {
-  lowThreshold: number; // not_enough if balance below this
-  highThreshold: number; // too_much if balance above this
-}
+import { UserSettings, getUserSettings } from './settings';
 
 export interface HealthBreakdown {
   inflows: {
@@ -27,105 +23,49 @@ export interface HealthProjection {
   projectionPeriodDays: number;
 }
 
-const DEFAULT_SETTINGS: HealthSettings = {
-  lowThreshold: 0,
-  highThreshold: 500,
-};
-
 /**
- * Get user health settings from Redis, with defaults
+ * Get user settings for health calculation
  */
-async function getHealthSettings(userId: string): Promise<HealthSettings> {
-  const settingsKey = `mt:settings:${userId}`;
-  const settingsData = await redisOps.get(settingsKey);
-
-  if (!settingsData) {
-    return DEFAULT_SETTINGS;
-  }
-
-  try {
-    const settings = JSON.parse(settingsData);
-    return {
-      lowThreshold: settings.lowThreshold ?? DEFAULT_SETTINGS.lowThreshold,
-      highThreshold: settings.highThreshold ?? DEFAULT_SETTINGS.highThreshold,
-    };
-  } catch (error) {
-    console.error('Error parsing health settings:', error);
-    return DEFAULT_SETTINGS;
-  }
+async function getUserSettingsForHealth(userId: string): Promise<UserSettings> {
+  return await getUserSettings(userId);
 }
 
 /**
- * Calculate projected inflows from today until next bonus date
- * Includes bi-weekly paychecks and one bonus on bonus date
+ * Calculate projected inflows from user settings
+ * Includes bi-weekly paychecks and one bonus on next bonus date
  */
-function calculateInflows(payrollEvents: IncomeEvent[], projectionDays: number = 90): { payroll: number; bonus: number } {
+function calculateInflows(userSettings: UserSettings, projectionDays: number = 90): { paycheck: number; bonus: number } {
   const now = new Date();
   const endDate = new Date(now.getTime() + projectionDays * 24 * 60 * 60 * 1000);
+  const nextBonusDate = new Date(userSettings.nextBonusDate);
 
-  // Find the most recent bonus and its amount
-  const bonuses = payrollEvents.filter(event => !event.isPayroll);
-  const lastBonus = bonuses.length > 0
-    ? bonuses.reduce((latest, current) =>
-        new Date(current.date) > new Date(latest.date) ? current : latest
-      )
-    : null;
+  // Assume bi-weekly paychecks (14 days) - could be made configurable later
+  const paycheckIntervalDays = 14;
+  const paycheckAmount = userSettings.paycheckAmount;
 
-  // Find regular payroll events to determine frequency and amount
-  const payrolls = payrollEvents.filter(event => event.isPayroll);
-  if (payrolls.length === 0) {
-    return { payroll: 0, bonus: lastBonus ? lastBonus.amount : 0 };
-  }
-
-  // Calculate average payroll amount
-  const totalPayroll = payrolls.reduce((sum, p) => sum + p.amount, 0);
-  const avgPayroll = totalPayroll / payrolls.length;
-
-  // Determine payroll frequency from dates
-  // Sort payroll dates
-  const payrollDates = payrolls
-    .map(p => new Date(p.date))
-    .sort((a, b) => a.getTime() - b.getTime());
-
-  // Calculate average interval between paychecks
-  let avgIntervalDays = 14; // Default to bi-weekly
-  if (payrollDates.length >= 2) {
-    const intervals: number[] = [];
-    for (let i = 1; i < payrollDates.length; i++) {
-      const days = Math.round((payrollDates[i].getTime() - payrollDates[i-1].getTime()) / (24 * 60 * 60 * 1000));
-      intervals.push(days);
-    }
-    avgIntervalDays = intervals.reduce((sum, days) => sum + days, 0) / intervals.length;
-    // Clamp to reasonable range (weekly to monthly)
-    avgIntervalDays = Math.max(7, Math.min(31, avgIntervalDays));
-  }
-
-  // Project payroll payments from now until end date
-  let projectedPayroll = 0;
+  // Project paycheck payments from now until end date
+  let projectedPaychecks = 0;
   let currentDate = new Date(now);
 
-  // Find the most recent payroll date to determine next paycheck
-  const lastPayrollDate = payrollDates.length > 0 ? payrollDates[payrollDates.length - 1] : now;
-
-  // Calculate next paycheck date
-  let nextPaycheckDate = new Date(lastPayrollDate);
-  if (nextPaycheckDate <= now) {
-    // Next paycheck is after the last one by avg interval
-    nextPaycheckDate = new Date(lastPayrollDate.getTime() + avgIntervalDays * 24 * 60 * 60 * 1000);
-  }
+  // Calculate next paycheck date (assume bi-weekly from now)
+  let nextPaycheckDate = new Date(now);
+  // For simplicity, assume next paycheck is 14 days from now
+  nextPaycheckDate = new Date(now.getTime() + paycheckIntervalDays * 24 * 60 * 60 * 1000);
 
   // Project paychecks
   currentDate = new Date(nextPaycheckDate);
   while (currentDate <= endDate) {
-    projectedPayroll += avgPayroll;
-    currentDate = new Date(currentDate.getTime() + avgIntervalDays * 24 * 60 * 60 * 1000);
+    projectedPaychecks += paycheckAmount;
+    currentDate = new Date(currentDate.getTime() + paycheckIntervalDays * 24 * 60 * 60 * 1000);
   }
 
-  // Add one bonus if we have bonus data
-  const projectedBonus = lastBonus ? lastBonus.amount : 0;
+  // Add bonus if next bonus date is within projection period
+  const projectedBonus = (nextBonusDate <= endDate && nextBonusDate >= now)
+    ? (userSettings.bonusAmount || 0)
+    : 0;
 
   return {
-    payroll: projectedPayroll,
+    paycheck: projectedPaychecks,
     bonus: projectedBonus
   };
 }
@@ -172,11 +112,11 @@ function calculateOutflows(recurringPatterns: RecurringPattern[], projectionDays
 export async function calculateFinancialHealth(userId: string): Promise<HealthProjection> {
   const projectionDays = 90; // 3 months projection
 
-  // Get settings
-  const settings = await getHealthSettings(userId);
+  // Get user settings
+  const userSettings = await getUserSettingsForHealth(userId);
 
   // Get recurring patterns
-  const recurringKey = `mt:recurring:${userId}`;
+  const recurringKey = redisKeys.recurring(userId);
   const recurringData = await redisOps.get(recurringKey);
   let recurringPatterns: RecurringPattern[] = [];
   if (recurringData) {
@@ -187,34 +127,23 @@ export async function calculateFinancialHealth(userId: string): Promise<HealthPr
     }
   }
 
-  // Get payroll/bonus events
-  const payrollKey = `mt:payroll:${userId}`;
-  const payrollData = await redisOps.get(payrollKey);
-  let payrollEvents: IncomeEvent[] = [];
-  if (payrollData) {
-    try {
-      payrollEvents = JSON.parse(payrollData);
-    } catch (error) {
-      console.error('Error parsing payroll data:', error);
-    }
-  }
-
-  // Calculate inflows
-  const inflows = calculateInflows(payrollEvents, projectionDays);
+  // Calculate inflows from user settings
+  const inflows = calculateInflows(userSettings, projectionDays);
 
   // Calculate outflows
   const outflows = calculateOutflows(recurringPatterns, projectionDays);
 
   // Calculate net flow and projected balance
-  const totalInflows = inflows.payroll + inflows.bonus;
+  const totalInflows = inflows.paycheck + inflows.bonus;
   const netFlow = totalInflows - outflows;
   const projectedBalance = netFlow;
 
-  // Determine health status
+  // Determine health status based on net flow
+  // If net flow is positive, user has enough; if negative, not enough
   let status: 'not_enough' | 'enough' | 'too_much';
-  if (projectedBalance < settings.lowThreshold) {
+  if (netFlow < 0) {
     status = 'not_enough';
-  } else if (projectedBalance > settings.highThreshold) {
+  } else if (netFlow > userSettings.paycheckAmount * 0.5) { // More than half paycheck surplus
     status = 'too_much';
   } else {
     status = 'enough';
@@ -225,7 +154,7 @@ export async function calculateFinancialHealth(userId: string): Promise<HealthPr
     projectedBalance,
     breakdown: {
       inflows: {
-        payroll: inflows.payroll,
+        payroll: inflows.paycheck,
         bonus: inflows.bonus,
         total: totalInflows,
       },
