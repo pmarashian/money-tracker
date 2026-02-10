@@ -8,6 +8,7 @@ export interface UserSettings {
   paycheckAmount: number;
   nextBonusDate: string; // ISO date string
   bonusAmount?: number; // Optional bonus amount
+  nextPaycheckDate?: string; // Optional ISO date string for next payday (used by health projection)
 }
 
 /**
@@ -40,6 +41,7 @@ export async function getUserSettings(userId: string): Promise<UserSettings> {
       paycheckAmount: typeof settings.paycheckAmount === 'number' ? settings.paycheckAmount : DEFAULT_USER_SETTINGS.paycheckAmount,
       nextBonusDate: typeof settings.nextBonusDate === 'string' ? settings.nextBonusDate : DEFAULT_USER_SETTINGS.nextBonusDate,
       bonusAmount: typeof settings.bonusAmount === 'number' ? settings.bonusAmount : DEFAULT_USER_SETTINGS.bonusAmount,
+      nextPaycheckDate: typeof settings.nextPaycheckDate === 'string' ? settings.nextPaycheckDate : undefined,
     };
   } catch (error) {
     console.error('Error parsing user settings:', error);
@@ -59,6 +61,9 @@ export async function updateUserSettings(userId: string, updates: Partial<UserSe
     ...currentSettings,
     ...updates,
   };
+  if (typeof updates.balance === 'number' && !isNaN(updates.balance)) {
+    newSettings.balance = updates.balance;
+  }
 
   // Validate the updated settings
   const validationError = validateUserSettings(newSettings);
@@ -82,9 +87,9 @@ function validateUserSettings(settings: UserSettings): string | null {
     return 'Balance must be a valid number';
   }
 
-  // Validate paycheckAmount (must be positive)
-  if (typeof settings.paycheckAmount !== 'number' || isNaN(settings.paycheckAmount) || settings.paycheckAmount <= 0) {
-    return 'Paycheck amount must be a positive number';
+  // Validate paycheckAmount (must be non-negative; 0 means no regular paycheck)
+  if (typeof settings.paycheckAmount !== 'number' || isNaN(settings.paycheckAmount) || settings.paycheckAmount < 0) {
+    return 'Paycheck amount must be a non-negative number';
   }
 
   // Validate nextBonusDate (must be a valid date and not in the past)
@@ -106,6 +111,17 @@ function validateUserSettings(settings: UserSettings): string | null {
   // Validate bonusAmount (if provided, must be non-negative)
   if (settings.bonusAmount !== undefined && (typeof settings.bonusAmount !== 'number' || isNaN(settings.bonusAmount) || settings.bonusAmount < 0)) {
     return 'Bonus amount must be a non-negative number';
+  }
+
+  // Validate nextPaycheckDate (if provided, must be valid date string)
+  if (settings.nextPaycheckDate !== undefined && settings.nextPaycheckDate !== null) {
+    if (typeof settings.nextPaycheckDate !== 'string') {
+      return 'Next paycheck date must be a valid date string';
+    }
+    const payDate = new Date(settings.nextPaycheckDate);
+    if (isNaN(payDate.getTime())) {
+      return 'Next paycheck date must be a valid date';
+    }
   }
 
   return null; // Valid

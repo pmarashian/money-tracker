@@ -18,6 +18,8 @@ export async function GET(request: NextRequest) {
       projectedBalance: health.projectedBalance,
       breakdown: health.breakdown,
       projectionPeriodDays: health.projectionPeriodDays,
+      currentBalance: health.currentBalance,
+      nextPaycheckDate: health.nextPaycheckDate,
     });
 
   } catch (error) {

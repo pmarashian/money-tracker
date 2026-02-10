@@ -98,7 +98,11 @@ export function parseChaseCSV(csvContent: string): NormalizedTransaction[] {
       }
 
       const description = row[headerMap.get('description')!]?.toString() || '';
-      const normalizedMerchant = normalizeMerchantName(description);
+      const descriptionForMerchant = normalizeDescriptionForTable(description);
+      const normalizedMerchant =
+        normalizeMerchantName(descriptionForMerchant) ||
+        descriptionForMerchant.trim() ||
+        'unknown';
 
       const transaction: NormalizedTransaction = {
         details: row[headerMap.get('details')!]?.toString() || '',
@@ -122,11 +126,45 @@ export function parseChaseCSV(csvContent: string): NormalizedTransaction[] {
 }
 
 /**
+ * Normalize description for the normalized transaction table (e.g. for AI recurring detection).
+ * For Privacy.com entries like "PwP  UNITY       Privacycom TN: 1074373     WEB ID:  626060084",
+ * strips the "PwP  " prefix and everything from "Privacycom" onward, leaving only the merchant (e.g. "UNITY").
+ */
+export function normalizeDescriptionForTable(description: string): string {
+  if (!description) return '';
+  const idx = description.toLowerCase().indexOf('privacycom');
+  if (idx === -1) return description;
+  const prefix = description.slice(0, idx).replace(/^\s*PwP\s+/i, '').trim();
+  return prefix.replace(/\s+/g, ' ');
+}
+
+/**
+ * Strip Chase-style account/ref suffixes so the same logical merchant
+ * does not split into multiple groups (e.g. different WEB ID / PPD ID).
+ */
+function stripChaseSuffixes(s: string): string {
+  let out = s;
+  // Strip from keyword to end (case-insensitive); order so longer matches first
+  const suffixPatterns = [
+    /\s+transaction#:\s*.+$/i,
+    /\s+WEB ID:\s*\S+$/i,
+    /\s+PPD ID:\s*\S+$/i,
+    /\s+CCD ID:\s*\S+$/i,
+    /\s+\d{2}\/\d{2}\s*$/, // trailing MM/DD
+  ];
+  for (const re of suffixPatterns) {
+    out = out.replace(re, '').trim();
+  }
+  return out;
+}
+
+/**
  * Normalize merchant name from transaction description
  * Extracts clean merchant names from Chase patterns like:
  * - "PwP MERCHANT..." -> "pwp merchant"
  * - "DUKEENERGY..." -> "duke energy"
  * - "APPLECARD..." -> "apple card"
+ * Strips WEB ID / PPD ID / CCD ID so one logical merchant = one group.
  */
 export function normalizeMerchantName(description: string): string {
   if (!description) return '';
@@ -135,6 +173,10 @@ export function normalizeMerchantName(description: string): string {
 
   // Remove extra spaces
   normalized = normalized.replace(/\s+/g, ' ');
+
+  // Strip Chase-style suffixes before other pattern logic
+  normalized = stripChaseSuffixes(normalized);
+  normalized = normalized.replace(/\s+/g, ' ').trim();
 
   // Extract merchant from common Chase patterns
   const patterns = [
@@ -176,8 +218,15 @@ export function normalizeMerchantName(description: string): string {
     'city of cle': 'rent',
     // Add more mappings as needed
   };
+  normalized = abbreviationMap[normalized] || normalized;
 
-  return abbreviationMap[normalized] || normalized;
+  // Known variants → canonical name (e.g. ATT*BILL PA and ATT PAYMENT → same group)
+  const variantMap: Record<string, string> = {
+    'att*bill pa': 'att',
+    'att payment': 'att',
+  };
+  const key = normalized.replace(/\s+/g, ' ').trim();
+  return variantMap[key] ?? normalized;
 }
 
 /**

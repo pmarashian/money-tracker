@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import {
   IonContent,
   IonHeader,
-  IonMenuButton,
   IonPage,
   IonTitle,
   IonToolbar,
@@ -10,14 +9,14 @@ import {
   IonCardHeader,
   IonCardTitle,
   IonCardContent,
-  IonBadge,
   IonSpinner,
   IonText,
   IonButton,
   IonIcon,
 } from '@ionic/react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { cashOutline, calendarOutline, settingsOutline } from 'ionicons/icons';
+import { calendarOutline, settingsOutline } from 'ionicons/icons';
 import { apiGet } from '../lib/api';
 
 interface HealthData {
@@ -36,6 +35,8 @@ interface HealthData {
     netFlow: number;
   };
   projectionPeriodDays: number;
+  currentBalance?: number;
+  nextPaycheckDate?: string | null;
 }
 
 interface UserSettings {
@@ -43,9 +44,11 @@ interface UserSettings {
   paycheckAmount: number;
   nextBonusDate: string;
   bonusAmount?: number;
+  nextPaycheckDate?: string;
 }
 
 const Home: React.FC = () => {
+  const location = useLocation();
   const { user, loading: authLoading } = useAuth();
   const [healthData, setHealthData] = useState<HealthData | null>(null);
   const [settings, setSettings] = useState<UserSettings | null>(null);
@@ -84,7 +87,7 @@ const Home: React.FC = () => {
   };
 
   useEffect(() => {
-    if (user) {
+    if (user && location.pathname === '/app/home') {
       setLoading(true);
       setError(null);
       Promise.all([fetchHealthData(), fetchSettings()]).finally(() => {
@@ -93,7 +96,7 @@ const Home: React.FC = () => {
     } else if (!authLoading) {
       setLoading(false);
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, location.pathname]);
 
   const getHealthStatusColor = (status: string) => {
     switch (status) {
@@ -108,19 +111,6 @@ const Home: React.FC = () => {
     }
   };
 
-  const getHealthStatusText = (status: string) => {
-    switch (status) {
-      case 'not_enough':
-        return 'Not Enough';
-      case 'enough':
-        return 'Enough';
-      case 'too_much':
-        return 'Too Much';
-      default:
-        return 'Unknown';
-    }
-  };
-
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -128,13 +118,15 @@ const Home: React.FC = () => {
     }).format(amount);
   };
 
-  const getNextPaycheckDate = () => {
+  const getNextPaycheckDate = (): Date | null => {
     if (!settings?.paycheckAmount) return null;
-
-    // Assume bi-weekly paychecks for now
+    const dateStr = healthData?.nextPaycheckDate ?? settings?.nextPaycheckDate;
+    if (dateStr) {
+      const d = new Date(dateStr);
+      if (!isNaN(d.getTime())) return d;
+    }
     const today = new Date();
-    const nextPaycheck = new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000);
-    return nextPaycheck;
+    return new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000);
   };
 
   const getDaysUntilBonus = () => {
@@ -153,7 +145,6 @@ const Home: React.FC = () => {
       <IonPage>
         <IonHeader>
           <IonToolbar>
-            <IonMenuButton slot="start" />
             <IonTitle>Money Tracker</IonTitle>
           </IonToolbar>
         </IonHeader>
@@ -172,12 +163,10 @@ const Home: React.FC = () => {
       <IonPage>
         <IonHeader>
           <IonToolbar>
-            <IonMenuButton slot="start" />
             <IonTitle>Money Tracker</IonTitle>
           </IonToolbar>
         </IonHeader>
         <IonContent className="ion-padding">
-          <h1 className="font-heading">Welcome to Money Tracker</h1>
           <p className="font-body">Please log in to view your financial health.</p>
         </IonContent>
       </IonPage>
@@ -189,7 +178,6 @@ const Home: React.FC = () => {
       <IonPage>
         <IonHeader>
           <IonToolbar>
-            <IonMenuButton slot="start" />
             <IonTitle>Money Tracker</IonTitle>
           </IonToolbar>
         </IonHeader>
@@ -214,21 +202,11 @@ const Home: React.FC = () => {
     <IonPage>
       <IonHeader>
         <IonToolbar>
-          <IonMenuButton slot="start" />
           <IonTitle>Money Tracker</IonTitle>
         </IonToolbar>
       </IonHeader>
-      <IonContent fullscreen>
-        <IonHeader collapse="condense">
-          <IonToolbar>
-            <IonMenuButton slot="start" />
-            <IonTitle size="large">Money Tracker</IonTitle>
-          </IonToolbar>
-        </IonHeader>
-
+      <IonContent>
         <div className="ion-padding">
-          <h1 className="font-heading">Financial Health</h1>
-
           {!hasSettings ? (
             <IonCard color="warning">
               <IonCardHeader>
@@ -250,65 +228,65 @@ const Home: React.FC = () => {
             </IonCard>
           ) : healthData ? (
             <>
-              {/* Health Status */}
-              <IonCard>
-                <IonCardHeader>
-                  <IonCardTitle>Health Status</IonCardTitle>
-                </IonCardHeader>
+              {/* Hero: card background = state (danger/success/warning), projected balance + supporting line */}
+              <IonCard className="home-hero" color={getHealthStatusColor(healthData.status)}>
                 <IonCardContent>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                    <IonBadge color={getHealthStatusColor(healthData.status)}>
-                      {getHealthStatusText(healthData.status)}
-                    </IonBadge>
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-                    <IonIcon icon={cashOutline} />
-                    <IonText>
-                      <strong>Projected Balance: {formatCurrency(healthData.projectedBalance)}</strong>
-                    </IonText>
-                  </div>
-
-                  <div className="font-body" style={{ fontSize: '0.9em', color: 'var(--ion-color-medium)' }}>
-                    <p>
-                      Based on {healthData.projectionPeriodDays}-day projection with {formatCurrency(healthData.breakdown.netFlow)} net flow.
+                  {(healthData.currentBalance !== undefined || settings?.balance !== undefined) && (
+                    <p className="home-hero__supporting" style={{ marginBottom: '0.5rem' }}>
+                      Current balance: {formatCurrency(healthData.currentBalance ?? settings?.balance ?? 0)}
                     </p>
+                  )}
+                  <div className="home-hero__balance">
+                    <span className="home-hero__balance-label">
+                      Balance in {healthData.projectionPeriodDays} days
+                    </span>
+                    <span className="home-hero__balance-value">
+                      {formatCurrency(healthData.projectedBalance)}
+                    </span>
                   </div>
+                  <p className="home-hero__supporting">
+                    Based on {healthData.projectionPeriodDays}-day projection · Net flow: {formatCurrency(healthData.breakdown.netFlow)}
+                  </p>
+                  <p className="home-hero__supporting">
+                    Expenses: {formatCurrency(healthData.breakdown.outflows.total)}
+                    {' · Payroll: '}
+                    {formatCurrency(healthData.breakdown.inflows.payroll)}
+                    {healthData.breakdown.inflows.bonus > 0
+                      ? ` · Bonus: ${formatCurrency(healthData.breakdown.inflows.bonus)}`
+                      : ''}
+                  </p>
                 </IonCardContent>
               </IonCard>
 
-              {/* Summary Information */}
-              <IonCard>
-                <IonCardHeader>
-                  <IonCardTitle>Summary</IonCardTitle>
-                </IonCardHeader>
+              {/* Upcoming: paycheck + bonus in compact rows */}
+              <IonCard className="home-upcoming">
                 <IonCardContent>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    {nextPaycheckDate && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <IonIcon icon={calendarOutline} />
-                        <IonText>
-                          Next paycheck: {nextPaycheckDate.toLocaleDateString()}
-                        </IonText>
-                      </div>
-                    )}
-
-                    {daysUntilBonus && daysUntilBonus > 0 && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <IonIcon icon={calendarOutline} />
-                        <IonText>
-                          {daysUntilBonus} days until bonus
-                          {settings?.bonusAmount && ` (${formatCurrency(settings.bonusAmount)})`}
-                        </IonText>
-                      </div>
-                    )}
-
-                    {!nextPaycheckDate && !daysUntilBonus && (
-                      <IonText color="medium">
-                        <p>No upcoming income events detected</p>
-                      </IonText>
-                    )}
-                  </div>
+                  {nextPaycheckDate && (
+                    <div className="home-upcoming__row">
+                      <span className="home-upcoming__label">
+                        <IonIcon icon={calendarOutline} className="home-upcoming__icon" />
+                        Next paycheck
+                      </span>
+                      <span className="home-upcoming__value">{nextPaycheckDate.toLocaleDateString()}</span>
+                    </div>
+                  )}
+                  {daysUntilBonus != null && daysUntilBonus > 0 && (
+                    <div className="home-upcoming__row">
+                      <span className="home-upcoming__label">
+                        <IonIcon icon={calendarOutline} className="home-upcoming__icon" />
+                        Bonus
+                      </span>
+                      <span className="home-upcoming__value">
+                        {daysUntilBonus} days
+                        {settings?.bonusAmount ? ` · ${formatCurrency(settings.bonusAmount)}` : ''}
+                      </span>
+                    </div>
+                  )}
+                  {!nextPaycheckDate && (daysUntilBonus == null || daysUntilBonus <= 0) && (
+                    <p className="home-upcoming__empty font-body">
+                      No upcoming income events
+                    </p>
+                  )}
                 </IonCardContent>
               </IonCard>
             </>

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUser, requireAuth } from '../../../../lib/auth';
+import { getCurrentUser } from '../../../../lib/auth';
 import { redisOps } from '../../../../lib/redis';
-import { detectRecurringTransactions, storeRecurringPatterns, Transaction } from '../../../../lib/recurring';
+import { detectRecurringTransactions, storeRecurringPatterns, RecurringPattern, Transaction } from '../../../../lib/recurring';
+import { extractRecurringExpensesWithAIFromNormalizedTable } from '../../../../lib/extractRecurringWithAI';
 import { parseChaseCSV, validateTransactionsForRecurring } from '../../../../lib/csv';
 import { detectPayrollAndBonus, storePayrollAndBonus } from '../../../../lib/payroll';
 
@@ -20,6 +21,8 @@ export async function POST(request: NextRequest) {
     if (!file) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
     }
+
+    console.log('[upload] POST /api/transactions/upload — file:', file.name, 'user:', user.id);
 
     // Check file type
     if (!file.name.toLowerCase().endsWith('.csv')) {
@@ -44,15 +47,33 @@ export async function POST(request: NextRequest) {
     // Store transactions in Redis
     const transactionsKey = `mt:txns:${user.id}`;
     await redisOps.set(transactionsKey, JSON.stringify(transactions));
+    console.log('[upload] Stored', transactions.length, 'transactions in Redis');
 
-    // Run recurring detection
-    const recurringPatterns = await detectRecurringTransactions(user.id);
+    // Run recurring detection: AI on normalized table first when key is set, else algorithm
+    let recurringPatterns: RecurringPattern[];
+    if (process.env.OPENAI_API_KEY) {
+      try {
+        console.log('[upload] Running AI recurring extraction (normalized table)...');
+        recurringPatterns = await extractRecurringExpensesWithAIFromNormalizedTable(transactions);
+        console.log('[upload] AI recurring extraction OK —', recurringPatterns.length, 'patterns');
+      } catch (aiError) {
+        console.error('AI recurring extraction failed, using algorithm fallback:', aiError);
+        recurringPatterns = await detectRecurringTransactions(user.id);
+        console.log('[upload] Algorithm fallback —', recurringPatterns.length, 'patterns');
+      }
+    } else {
+      console.log('[upload] No OPENAI_API_KEY — using algorithm for recurring');
+      recurringPatterns = await detectRecurringTransactions(user.id);
+      console.log('[upload] Algorithm —', recurringPatterns.length, 'patterns');
+    }
     await storeRecurringPatterns(user.id, recurringPatterns);
 
     // Run payroll and bonus detection
     const payrollEvents = await detectPayrollAndBonus(user.id);
     await storePayrollAndBonus(user.id, payrollEvents);
+    console.log('[upload] Payroll/bonus —', payrollEvents.length, 'events');
 
+    console.log('[upload] Success — recurring:', recurringPatterns.length, 'payroll:', payrollEvents.length);
     return NextResponse.json({
       success: true,
       message: 'Transactions uploaded successfully',

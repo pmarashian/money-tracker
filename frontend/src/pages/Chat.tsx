@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   IonContent,
   IonHeader,
-  IonMenuButton,
   IonPage,
   IonTitle,
   IonToolbar,
@@ -131,22 +130,13 @@ const Chat: React.FC = () => {
     <IonPage>
       <IonHeader>
         <IonToolbar>
-          <IonMenuButton slot="start" />
           <IonTitle>Chat</IonTitle>
         </IonToolbar>
       </IonHeader>
-      <IonContent fullscreen>
-        <IonHeader collapse="condense">
-          <IonToolbar>
-            <IonMenuButton slot="start" />
-            <IonTitle size="large">Chat</IonTitle>
-          </IonToolbar>
-        </IonHeader>
-
+      <IonContent>
         {/* Welcome message */}
         {messages.length === 0 && (
           <div className="ion-padding">
-            <h1 className="font-heading">Chat</h1>
             <p className="font-body">Chat with AI about your financial health and get personalized advice.</p>
           </div>
         )}

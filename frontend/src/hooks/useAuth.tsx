@@ -1,5 +1,5 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
-import { apiGet } from '../lib/api';
+import { apiGet, apiPost } from '../lib/api';
 
 interface User {
   id: string;
@@ -10,6 +10,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   checkAuth: () => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,7 +25,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (response.ok) {
         const userData = await response.json();
-        setUser(userData);
+        setUser(userData.user);
       } else {
         setUser(null);
       }
@@ -36,12 +37,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const logout = async () => {
+    try {
+      await apiPost('/api/auth/logout');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    } finally {
+      setUser(null);
+    }
+  };
+
   useEffect(() => {
     checkAuth();
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, checkAuth }}>
+    <AuthContext.Provider value={{ user, loading, checkAuth, logout }}>
       {children}
     </AuthContext.Provider>
   );

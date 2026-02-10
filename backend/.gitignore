@@ -50,6 +50,8 @@ Desktop.ini
 *.tmp
 *.temp
 .cache/
+openai-expenses-payload.json
+openai-expenses-payload-array.json
 
 # Testing
 coverage/

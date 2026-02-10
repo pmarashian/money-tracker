@@ -10,11 +10,10 @@ import {
   IonInput,
   IonButton,
   IonText,
-  IonRouterLink,
   IonLoading,
   IonAlert,
 } from '@ionic/react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { apiPost } from '../lib/api';
 
 const Register: React.FC = () => {
@@ -74,9 +73,8 @@ const Register: React.FC = () => {
           <IonTitle>Register</IonTitle>
         </IonToolbar>
       </IonHeader>
-      <IonContent fullscreen className="ion-padding">
+      <IonContent className="ion-padding" fullscreen>
         <div className="ion-text-center ion-margin-bottom">
-          <h2 className="font-heading">Create Account</h2>
           <p className="font-body">Join Money Tracker to manage your expenses</p>
         </div>
 
@@ -127,7 +125,7 @@ const Register: React.FC = () => {
         <div className="ion-text-center ion-margin-top">
           <IonText color="medium">
             Already have an account?{' '}
-            <IonRouterLink routerLink="/login">Sign In</IonRouterLink>
+            <Link to="/login">Sign In</Link>
           </IonText>
         </div>
 

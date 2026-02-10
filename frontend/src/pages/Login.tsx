@@ -1,21 +1,18 @@
 import React, { useState } from 'react';
 import {
   IonContent,
-  IonHeader,
   IonPage,
-  IonTitle,
-  IonToolbar,
   IonItem,
   IonLabel,
   IonInput,
   IonButton,
   IonText,
-  IonRouterLink,
   IonLoading,
   IonAlert,
 } from '@ionic/react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { apiPost } from '../lib/api';
+import { useAuth } from '../hooks/useAuth';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -24,6 +21,7 @@ const Login: React.FC = () => {
   const [error, setError] = useState('');
   const [showAlert, setShowAlert] = useState(false);
   const navigate = useNavigate();
+  const { checkAuth } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +34,8 @@ const Login: React.FC = () => {
       const data = await response.json();
 
       if (response.ok) {
-        // Success - redirect to home
+        // Refresh auth state so ProtectedRoute sees the user, then redirect
+        await checkAuth();
         navigate('/app/home');
       } else {
         // Error - show error message
@@ -53,14 +52,8 @@ const Login: React.FC = () => {
 
   return (
     <IonPage>
-      <IonHeader>
-        <IonToolbar>
-          <IonTitle>Login</IonTitle>
-        </IonToolbar>
-      </IonHeader>
-      <IonContent fullscreen className="ion-padding">
+      <IonContent className="ion-padding" fullscreen>
         <div className="ion-text-center ion-margin-bottom">
-          <h2 className="font-heading">Welcome Back</h2>
           <p className="font-body">Sign in to your Money Tracker account</p>
         </div>
 
@@ -100,7 +93,7 @@ const Login: React.FC = () => {
         <div className="ion-text-center ion-margin-top">
           <IonText color="medium">
             Don't have an account?{' '}
-            <IonRouterLink routerLink="/register">Sign Up</IonRouterLink>
+            <Link to="/register">Sign Up</Link>
           </IonText>
         </div>
 

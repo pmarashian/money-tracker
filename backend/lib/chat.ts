@@ -43,8 +43,8 @@ APP DESCRIPTION:
 - This is a money tracker app where users upload their Chase CSV transaction files
 - The app automatically detects recurring expenses (monthly/weekly/bi-weekly patterns)
 - Users have bi-weekly paychecks and occasional bonuses
-- The app calculates a "financial health" metric based on projected inflows vs outflows over 90 days
-- Health status can be: "not_enough" (negative net flow), "enough" (balanced), or "too_much" (significant surplus)
+- The app calculates a "financial health" metric: it projects from today to the next bonus date using current balance plus inflows minus outflows
+- Health status is based on projected balance at end of that period: "not_enough" (projected balance below zero), "enough" (balanced), or "too_much" (significant surplus)
 
 USER'S CURRENT FINANCIAL CONTEXT:
 - Paycheck amount: $${userSettings.paycheckAmount} (bi-weekly)
@@ -55,12 +55,12 @@ USER'S CURRENT FINANCIAL CONTEXT:
 RECURRING EXPENSES DETECTED:
 ${recurringSummary || 'No recurring expenses detected yet'}
 
-FINANCIAL HEALTH PROJECTION (90 days):
+FINANCIAL HEALTH PROJECTION (to next bonus date, ${healthProjection.projectionPeriodDays} days):
 - Status: ${healthStatus}
-- Projected net flow: $${netFlow}
+- Projected net flow over period: $${netFlow}
 - Inflows: $${inflows.total} (Payroll: $${inflows.payroll}, Bonus: $${inflows.bonus})
 - Outflows: $${outflows.total} (Recurring: $${outflows.recurring})
-- Projected balance change: $${projectedBalance}
+- Projected balance at end of period: $${projectedBalance}
 
 INSTRUCTIONS:
 - Be helpful, accurate, and encouraging

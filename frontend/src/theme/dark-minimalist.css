@@ -4,6 +4,43 @@
 :root {
   color-scheme: dark;
   --ion-color-scheme: dark;
+  --font-heading: 'Press Start 2P', monospace;
+  --font-body: 'VT323', monospace;
+}
+
+/* Global height chain for Ionic layout */
+html,
+body {
+  height: 100%;
+}
+
+#root {
+  height: 100%;
+  min-height: 100vh;
+}
+
+#main {
+  transform: none !important;
+}
+
+/* ion-page fallback when used outside IonRouterOutlet (e.g. with React Router) */
+ion-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 100%;
+  position: relative;
+}
+
+/* ion-content must take remaining height when not in IonRouterOutlet */
+ion-page ion-content {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Reserve space above fixed tab bar so content doesn't sit under it */
+#main.has-tab-bar ion-content {
+  --padding-bottom: 72px; /* 16px base + 56px tab bar */
 }
 
 /* Retro Font Classes */
@@ -17,6 +54,81 @@
   font-family: 'VT323', monospace;
   font-size: 1.1em;
   line-height: 1.4;
+}
+
+/* Home page - card background color = state (danger/success/warning) */
+.home-hero {
+  margin-top: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.home-hero .home-hero__balance {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.home-hero__balance-label {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: #000000;
+  opacity: 0.85;
+}
+
+.home-hero__balance-value {
+  font-family: var(--font-body);
+  font-size: 1.85rem;
+  font-weight: normal;
+  color: #000000;
+}
+
+.home-hero__supporting {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: #000000;
+  opacity: 0.85;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.home-upcoming .home-upcoming__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--ion-color-step-200);
+}
+
+.home-upcoming .home-upcoming__row:last-of-type {
+  border-bottom: none;
+}
+
+.home-upcoming__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  color: var(--ion-color-step-600);
+}
+
+.home-upcoming__icon {
+  font-size: 1.1em;
+  color: var(--ion-color-step-500);
+}
+
+.home-upcoming__value {
+  font-family: var(--font-body);
+  font-size: 1.05rem;
+  color: var(--ion-text-color);
+}
+
+.home-upcoming__empty {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--ion-color-medium);
 }
 
 /* Minimalist Dark Theme - Override Ionic defaults */
@@ -204,4 +316,185 @@ a:hover, ion-router-link:hover {
 .ion-footer {
   border-top: 1px solid var(--ion-color-step-300) !important;
   background: var(--ion-background-color) !important;
+}
+
+/* Tab bar - active page indicator */
+.app-tab-bar {
+  border-top: 1px solid var(--ion-color-step-300) !important;
+  --color: var(--ion-color-step-600);
+  --color-selected: var(--ion-text-color);
+}
+
+.app-tab-bar ion-tab-button {
+  --color: var(--ion-color-step-600);
+  --color-selected: var(--ion-text-color);
+}
+
+.app-tab-bar__btn--active {
+  position: relative;
+  --color: var(--ion-text-color) !important;
+  color: var(--ion-text-color) !important;
+}
+
+.app-tab-bar__btn--active ion-icon {
+  color: var(--ion-text-color) !important;
+}
+
+.app-tab-bar__btn--active ion-label {
+  color: var(--ion-text-color) !important;
+  font-weight: 600;
+}
+
+/* Active tab: subtle top border as indicator */
+.app-tab-bar__btn--active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 24px;
+  height: 2px;
+  background: var(--ion-text-color);
+}
+
+/* Condensed expense list items */
+.expense-item ion-card-content.expense-item__content {
+  --padding-top: 12px;
+  --padding-bottom: 12px;
+  --padding-start: 16px;
+  --padding-end: 16px;
+}
+
+.expense-item__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.expense-item__row--main {
+  margin-bottom: 4px;
+}
+
+.expense-item__row--main .expense-item__name {
+  font-size: 1.4em;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.expense-item__row--main .expense-item__amount {
+  flex-shrink: 0;
+}
+
+.expense-item__row--meta .expense-item__meta {
+  font-size: 0.95em;
+  color: #ffffff;
+}
+
+.expense-item__actions {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.expense-item__actions ion-button {
+  margin-left: 4px;
+}
+
+/* Settings page */
+.settings-section {
+  margin-bottom: 1.5rem;
+}
+
+.settings-section:last-of-type {
+  margin-bottom: 0;
+}
+
+.settings-section__title {
+  font-family: var(--font-heading) !important;
+  font-size: 0.85em;
+  letter-spacing: 0.5px;
+  margin: 0 0 1rem 0;
+  color: var(--ion-text-color);
+}
+
+.settings-upload-zone {
+  position: relative;
+  display: block;
+  border: 2px dashed var(--ion-color-step-400);
+  background: var(--ion-color-step-50);
+  padding: 1.25rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  color: var(--ion-color-step-600);
+}
+
+.settings-upload-zone:hover,
+.settings-upload-zone:focus-within {
+  border-color: var(--ion-color-step-300);
+  background: var(--ion-color-step-100);
+}
+
+.settings-upload-zone.settings-upload-zone--dragover {
+  border-color: var(--ion-color-step-200);
+  background: var(--ion-color-step-150);
+}
+
+.settings-upload-zone input[type="file"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.settings-upload-result {
+  margin-top: 0.75rem;
+  padding: 0.5rem 0;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  color: var(--ion-color-step-700);
+  border-top: 1px solid var(--ion-color-step-200);
+}
+
+.settings-upload-error {
+  margin-top: 0.5rem;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  color: var(--ion-color-danger);
+}
+
+.settings-form-group {
+  margin-bottom: 1rem;
+}
+
+.settings-form-group:last-of-type {
+  margin-bottom: 0;
+}
+
+.settings-form-group__label {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--ion-color-step-600);
+  margin: 0 0 0.5rem 0;
+  display: block;
+}
+
+/* Primary action buttons (Save settings, Logout) - same size and spacing */
+.settings-primary-action {
+  margin-top: 1.25rem;
+}
+
+.settings-primary-action ion-button {
+  margin: 0;
+  min-height: 48px;
+  font-size: 1rem;
 }
