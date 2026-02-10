@@ -25,7 +25,7 @@ flowchart LR
 - **Backend**: Standalone Next.js app (API routes only, no UI), port e.g. 3000; frontend dev on 3001.
 - **Data**: Redis via external provider (e.g. Upstash). Store: user accounts, parsed transactions, detected recurring expenses, user settings (balance, paycheck amount, next bonus date), and session/token data for auth.
 - **Auth**: Email/password; backend issues HTTP-only cookies or JWT; frontend sends credentials/cookie on API requests.
-- **AI**: OpenAI chat completions in backend; chat endpoint uses recurring expenses + health metric + user message to update/explain health.
+- **AI**: OpenAI in backend for (1) recurring-expense extraction from uploaded transactions (after CSV upload) and (2) chat completions; chat endpoint uses recurring expenses + health metric + user message to update/explain health.
 
 ---
 
@@ -50,15 +50,14 @@ See Ionic and Capacitor official documentation for Vite setup details.
 
 - **CSV format** (from `docs/chase.csv`): Columns `Details`, `Posting Date`, `Description`, `Amount`, `Type`, `Balance`, `Check or Slip #`. Dates `MM/DD/YYYY`. Amount: negative = debit, positive = credit.
 - **Upload API**: e.g. `POST /api/transactions/upload` — accept multipart CSV file; parse (handle quoted fields); validate headers; store raw rows in Redis keyed by `userId` (and optionally `accountId`) with a cutoff so only last N months or last upload wins, per your product choice.
-- **Recurring detection** (new module + API):
-  - **Normalize description**: Extract merchant name from patterns like `PwP  MERCHANT NAME Privacycom...`, `DUKEENERGY BILL PAY...`, `APPLECARD GSBANK...` (first meaningful token(s) or known prefixes). Lowercase, strip extra spaces; optional mapping of known abbreviations (e.g. "CITY OF CLE" → "Rent").
-  - **Group**: Group debits by normalized merchant (or category). For each group, collect `{ date, amount }`.
-  - **Frequency + amount**: For each group with enough points (e.g. ≥2): infer interval (weekly / bi-weekly / monthly) via date deltas; compute typical amount (median or average). Mark as "recurring" if interval is regular enough (e.g. std dev of deltas below threshold).
-  - **Payroll vs bonus**: Separate credits that look like payroll (e.g. "MEDIA NEWS GROUP PAYROLL" or "DIRECT DEP") — treat large outliers (e.g. >> 2× median payroll) as bonus; optionally tag by user-configurable "payroll" vs "bonus" labels.
+- **Recurring detection** (AI + fallback, module + API):
+  - **Primary: AI extraction**. After upload, send a condensed representation of stored transactions (grouped by merchant, debits only) to OpenAI chat completions. The model identifies recurring expenses and returns a structured list of `{ name, amount, frequency, typicalDayOfMonth? }`. Implement in `backend/lib/extractRecurringWithAI.ts`; call after upload or when recomputing recurring list.
+  - **Fallback: rule-based**. When `OPENAI_API_KEY` is not set or the AI call fails, use the existing backend service `backend/lib/recurring.ts`: normalize description, group debits by merchant, infer interval via date deltas, compute typical amount, mark as recurring if interval is regular enough.
+  - **Payroll vs bonus**: Separate credits that look like payroll (e.g. "MEDIA NEWS GROUP PAYROLL" or "DIRECT DEP") — treat large outliers (e.g. >> 2× median payroll) as bonus; optionally tag by user-configurable "payroll" vs "bonus" labels. (Unchanged; see `backend/lib/payroll.ts`.)
   - **Output**: List of `{ name, amount, frequency, typicalDayOfMonth? }` and optionally list of payroll/bonus events with dates and amounts.
   - Expose: `GET /api/transactions/recurring` (and optionally `GET /api/transactions/payroll`) using data stored for the authenticated user.
 
-Implementation note: Do recurrence detection in a backend service (e.g. `backend/lib/recurring.ts`); call it after upload or on-demand when user requests "refresh" recurring list.
+Implementation note: Recurring expenses are extracted via AI (OpenAI) from the stored transactions after upload; use rule-based detection in `backend/lib/recurring.ts` as fallback when AI is unavailable or errors. Call extraction after upload or on-demand when the user requests or when recurring list is missing.
 
 ---
 
@@ -128,7 +127,7 @@ Implementation note: Do recurrence detection in a backend service (e.g. `backend
 | Area | Location | Purpose |
 |------|----------|---------|
 | Scaffolding | Root + `frontend/`, `backend/` | Vite + React + Ionic app, Next.js backend, Capacitor config (see Ionic/Capacitor Vite docs) |
-| CSV + recurring | `backend/lib/csv.ts`, `backend/lib/recurring.ts` | Parse Chase CSV; normalize descriptions; group; detect frequency/amount; payroll vs bonus |
+| CSV + recurring | `backend/lib/csv.ts`, `backend/lib/extractRecurringWithAI.ts`, `backend/lib/recurring.ts` | Parse Chase CSV; AI extract recurring (with rule-based fallback); payroll vs bonus |
 | Health | `backend/lib/health.ts` | Project inflows/outflows; compute status (not_enough / enough / too_much) |
 | API | `backend/app/api/transactions/upload`, `recurring`, `backend/app/api/health`, `settings`, `backend/app/api/chat`, `backend/app/api/auth/*` | Upload, recurring, health, settings, chat, auth |
 | Redis | `backend/lib/redis.ts` | Client and key helpers |
