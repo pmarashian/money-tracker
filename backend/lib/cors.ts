@@ -15,7 +15,7 @@ export function getCorsAllowedOrigins(): string[] {
         "https://your-production-domain.com",
       ];
   const combined = [...fromEnv, ...CAPACITOR_ORIGINS];
-  return [...new Set(combined)];
+  return Array.from(new Set(combined));
 }
 
 export function isAllowedOrigin(request: NextRequest): boolean {
