@@ -48,16 +48,13 @@ const Expenses: React.FC = () => {
     if (!user) return;
     setLoading(true);
     setError(null);
-    try {
-      const response = await apiGet('/api/transactions/recurring');
-      if (!response.ok) throw new Error('Failed to fetch recurring expenses');
-      const data = await response.json();
-      setRecurringExpenses(data.recurring || []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
+    const result = await apiGet<{ recurring: RecurringPattern[] }>('/api/transactions/recurring');
+    if (result.ok && result.data) {
+      setRecurringExpenses(result.data.recurring || []);
+    } else {
+      setError(result.error || 'An error occurred');
     }
+    setLoading(false);
   }, [user]);
 
   useEffect(() => {
@@ -132,18 +129,21 @@ const Expenses: React.FC = () => {
         ...(typicalDayOfMonth !== undefined && { typicalDayOfMonth }),
       };
 
-      const response =
+      const result =
         editingIndex !== null
-          ? await apiPatch('/api/transactions/recurring', { index: editingIndex, ...payload })
-          : await apiPost('/api/transactions/recurring', payload);
+          ? await apiPatch<{ recurring: RecurringPattern[] }>('/api/transactions/recurring', {
+              index: editingIndex,
+              ...payload,
+            })
+          : await apiPost<{ recurring: RecurringPattern[] }>('/api/transactions/recurring', payload);
 
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        setFormError(data.error || (editingIndex !== null ? 'Failed to update' : 'Failed to add'));
+      if (!result.ok) {
+        setFormError(result.error || (editingIndex !== null ? 'Failed to update' : 'Failed to add'));
         return;
       }
-      const data = await response.json();
-      setRecurringExpenses(data.recurring || recurringExpenses);
+      if (result.data?.recurring) {
+        setRecurringExpenses(result.data.recurring);
+      }
       closeModal();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Something went wrong');
@@ -156,13 +156,13 @@ const Expenses: React.FC = () => {
     if (deleteIndex === null) return;
     const index = deleteIndex;
     setDeleteIndex(null);
-    try {
-      const response = await apiDelete(`/api/transactions/recurring?index=${index}`);
-      if (!response.ok) throw new Error('Failed to delete');
-      const data = await response.json();
-      setRecurringExpenses(data.recurring || recurringExpenses);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete');
+    const result = await apiDelete<{ recurring: RecurringPattern[] }>(
+      `/api/transactions/recurring?index=${index}`
+    );
+    if (result.ok && result.data?.recurring) {
+      setRecurringExpenses(result.data.recurring);
+    } else {
+      setError(result.error || 'Failed to delete');
     }
   };
 

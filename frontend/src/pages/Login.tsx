@@ -11,7 +11,6 @@ import {
   IonAlert,
 } from '@ionic/react';
 import { useNavigate, Link } from 'react-router-dom';
-import { apiPost } from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
 
 const Login: React.FC = () => {
@@ -21,33 +20,21 @@ const Login: React.FC = () => {
   const [error, setError] = useState('');
   const [showAlert, setShowAlert] = useState(false);
   const navigate = useNavigate();
-  const { checkAuth } = useAuth();
+  const { login } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
-    try {
-      const response = await apiPost('/api/auth/login', { email, password });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        // Refresh auth state so ProtectedRoute sees the user, then redirect
-        await checkAuth();
-        navigate('/app/home');
-      } else {
-        // Error - show error message
-        setError(data.message || 'Login failed');
-        setShowAlert(true);
-      }
-    } catch (err) {
-      setError('Network error. Please try again.');
+    const result = await login(email, password);
+    if (result.success) {
+      navigate('/app/home');
+    } else {
+      setError(result.error || 'Login failed');
       setShowAlert(true);
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   };
 
   return (
@@ -63,7 +50,7 @@ const Login: React.FC = () => {
             <IonInput
               type="email"
               value={email}
-              onIonChange={(e) => setEmail(e.detail.value!)}
+              onIonInput={(e) => setEmail(e.detail.value ?? '')}
               required
               placeholder="Enter your email"
             />
@@ -74,7 +61,7 @@ const Login: React.FC = () => {
             <IonInput
               type="password"
               value={password}
-              onIonChange={(e) => setPassword(e.detail.value!)}
+              onIonInput={(e) => setPassword(e.detail.value ?? '')}
               required
               placeholder="Enter your password"
             />

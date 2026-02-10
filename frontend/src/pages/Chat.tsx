@@ -69,33 +69,20 @@ const Chat: React.FC = () => {
 
     setMessages(prev => [...prev, userMessage]);
 
-    try {
-      const response = await apiPost('/api/chat', { message: messageToSend });
+    const result = await apiPost<ChatResponse>('/api/chat', { message: messageToSend });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `HTTP ${response.status}`);
-      }
-
-      const data: ChatResponse = await response.json();
-
-      // Add assistant message to chat
+    if (result.ok && result.data) {
       const assistantMessage: ChatMessage = {
         role: 'assistant',
-        content: data.response,
+        content: result.data.response,
         timestamp: new Date().toISOString(),
       };
-
       setMessages(prev => [...prev, assistantMessage]);
-    } catch (error) {
-      console.error('Chat error:', error);
-      setError(error instanceof Error ? error.message : 'Failed to send message');
-
-      // Remove the user message if sending failed
+    } else {
+      setError(result.error || 'Failed to send message');
       setMessages(prev => prev.slice(0, -1));
-    } finally {
-      setIsLoading(false);
     }
+    setIsLoading(false);
   };
 
   const handleKeyPress = (event: React.KeyboardEvent) => {

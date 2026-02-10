@@ -72,30 +72,22 @@ const Settings: React.FC = () => {
   }, []);
 
   const loadSettings = async () => {
-    try {
-      const response = await apiGet('/api/settings');
-
-      if (response.ok) {
-        const data = await response.json();
-        const formattedDate = data.nextBonusDate ? data.nextBonusDate.split('T')[0] : '';
-        const nextPaycheckFormatted = data.nextPaycheckDate ? data.nextPaycheckDate.split('T')[0] : '';
-        setSettings({
-          ...DEFAULT_SETTINGS,
-          ...data,
-          nextBonusDate: formattedDate || DEFAULT_SETTINGS.nextBonusDate,
-          nextPaycheckDate: nextPaycheckFormatted || undefined,
-          balance: typeof data.balance === 'number' && !isNaN(data.balance) ? data.balance : DEFAULT_SETTINGS.balance,
-        });
-      } else {
-        console.error('Failed to load settings');
-        showToast('Failed to load settings', 'danger');
-      }
-    } catch (error) {
-      console.error('Error loading settings:', error);
-      showToast('Error loading settings', 'danger');
-    } finally {
-      setLoading(false);
+    const result = await apiGet<UserSettings & { nextPaycheckDate?: string }>('/api/settings');
+    if (result.ok && result.data) {
+      const data = result.data;
+      const formattedDate = data.nextBonusDate ? data.nextBonusDate.split('T')[0] : '';
+      const nextPaycheckFormatted = data.nextPaycheckDate ? data.nextPaycheckDate.split('T')[0] : '';
+      setSettings({
+        ...DEFAULT_SETTINGS,
+        ...data,
+        nextBonusDate: formattedDate || DEFAULT_SETTINGS.nextBonusDate,
+        nextPaycheckDate: nextPaycheckFormatted || undefined,
+        balance: typeof data.balance === 'number' && !isNaN(data.balance) ? data.balance : DEFAULT_SETTINGS.balance,
+      });
+    } else if (!result.ok) {
+      showToast(result.error || 'Failed to load settings', 'danger');
     }
+    setLoading(false);
   };
 
   const saveSettings = async () => {
@@ -105,40 +97,32 @@ const Settings: React.FC = () => {
     }
 
     setSaving(true);
-    try {
-      const paycheckNum = Number(settings.paycheckAmount);
-      const payload: Record<string, unknown> = {
-        balance: Number(settings.balance) || 0,
-        paycheckAmount: !isNaN(paycheckNum) ? paycheckNum : 2000,
-        nextBonusDate: settings.nextBonusDate,
-        bonusAmount: settings.bonusAmount !== undefined && settings.bonusAmount !== null ? Number(settings.bonusAmount) : 0,
-      };
-      if (settings.nextPaycheckDate) {
-        payload.nextPaycheckDate = settings.nextPaycheckDate;
-      }
-      const response = await apiPatch('/api/settings', payload);
-
-      if (response.ok) {
-        const updated = await response.json();
-        const formattedDate = updated.nextBonusDate ? updated.nextBonusDate.split('T')[0] : '';
-        const nextPaycheckFormatted = updated.nextPaycheckDate ? updated.nextPaycheckDate.split('T')[0] : '';
-        setSettings({
-          ...DEFAULT_SETTINGS,
-          ...updated,
-          nextBonusDate: formattedDate,
-          nextPaycheckDate: nextPaycheckFormatted || undefined,
-        });
-        showToast('Settings saved successfully', 'success');
-      } else {
-        const errorData = await response.json();
-        showToast(errorData.error || 'Failed to save settings', 'danger');
-      }
-    } catch (error) {
-      console.error('Error saving settings:', error);
-      showToast('Error saving settings', 'danger');
-    } finally {
-      setSaving(false);
+    const paycheckNum = Number(settings.paycheckAmount);
+    const payload: Record<string, unknown> = {
+      balance: Number(settings.balance) || 0,
+      paycheckAmount: !isNaN(paycheckNum) ? paycheckNum : 2000,
+      nextBonusDate: settings.nextBonusDate,
+      bonusAmount: settings.bonusAmount !== undefined && settings.bonusAmount !== null ? Number(settings.bonusAmount) : 0,
+    };
+    if (settings.nextPaycheckDate) {
+      payload.nextPaycheckDate = settings.nextPaycheckDate;
     }
+    const result = await apiPatch<UserSettings & { nextPaycheckDate?: string }>('/api/settings', payload);
+    if (result.ok && result.data) {
+      const updated = result.data;
+      const formattedDate = updated.nextBonusDate ? updated.nextBonusDate.split('T')[0] : '';
+      const nextPaycheckFormatted = updated.nextPaycheckDate ? updated.nextPaycheckDate.split('T')[0] : '';
+      setSettings({
+        ...DEFAULT_SETTINGS,
+        ...updated,
+        nextBonusDate: formattedDate,
+        nextPaycheckDate: nextPaycheckFormatted || undefined,
+      });
+      showToast('Settings saved successfully', 'success');
+    } else {
+      showToast(result.error || 'Failed to save settings', 'danger');
+    }
+    setSaving(false);
   };
 
   const handleInputChange = (field: keyof UserSettings, value: string | number) => {
@@ -197,46 +181,42 @@ const Settings: React.FC = () => {
     setUploadError(null);
     setUploadResult(null);
 
-    try {
-      const formData = new FormData();
-      formData.append('file', selectedFile);
+    const formData = new FormData();
+    formData.append('file', selectedFile);
 
-      const response = await apiRequest('/api/transactions/upload', {
-        method: 'POST',
-        body: formData,
+    const result = await apiRequest<{
+      message?: string;
+      rowCount?: number;
+      recurringPatternsDetected?: number;
+      payrollEventsDetected?: number;
+    }>('/api/transactions/upload', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (result.ok && result.data) {
+      const data = result.data;
+      setUploadResult({
+        success: true,
+        message: data.message,
+        rowCount: data.rowCount,
+        recurringPatternsDetected: data.recurringPatternsDetected,
+        payrollEventsDetected: data.payrollEventsDetected,
       });
-
-      const result = await response.json();
-
-      if (response.ok) {
-        setUploadResult({
-          success: true,
-          message: result.message,
-          rowCount: result.rowCount,
-          recurringPatternsDetected: result.recurringPatternsDetected,
-          payrollEventsDetected: result.payrollEventsDetected,
-        });
-        setSelectedFile(null);
-        if (fileInputRef.current) fileInputRef.current.value = '';
-        const parts = [
-          result.rowCount != null && ` ${result.rowCount} transactions`,
-          result.recurringPatternsDetected != null && ` ${result.recurringPatternsDetected} recurring`,
-          result.payrollEventsDetected != null && ` ${result.payrollEventsDetected} payroll`,
-        ].filter(Boolean);
-        showToast(`Uploaded.${parts.length ? parts.join(',') : ''}`, 'success');
-      } else {
-        const errMsg = result.error || 'Upload failed';
-        setUploadError(errMsg);
-        showToast(errMsg, 'danger');
-      }
-    } catch (err) {
-      const errMsg = 'Network error. Please try again.';
+      setSelectedFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      const parts = [
+        data.rowCount != null && ` ${data.rowCount} transactions`,
+        data.recurringPatternsDetected != null && ` ${data.recurringPatternsDetected} recurring`,
+        data.payrollEventsDetected != null && ` ${data.payrollEventsDetected} payroll`,
+      ].filter(Boolean);
+      showToast(`Uploaded.${parts.length ? parts.join(',') : ''}`, 'success');
+    } else {
+      const errMsg = result.error || 'Upload failed';
       setUploadError(errMsg);
       showToast(errMsg, 'danger');
-      console.error('Upload error:', err);
-    } finally {
-      setIsUploading(false);
     }
+    setIsUploading(false);
   };
 
   if (loading) {

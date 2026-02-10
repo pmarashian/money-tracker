@@ -20,47 +20,48 @@ export interface Session {
 }
 
 /**
- * Get the session from the request by parsing the JWT token from the auth-token cookie
+ * Get the session from the request.
+ * First checks Authorization: Bearer <token>, then falls back to auth-token cookie.
  */
 export async function getSession(request: NextRequest): Promise<Session | null> {
-  try {
-    // Get the auth-token cookie
-    const cookieHeader = request.headers.get('cookie');
-    if (!cookieHeader) {
-      return null;
-    }
-
-    // Parse cookies to find auth-token
-    const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
-      const [key, ...valueParts] = cookie.trim().split('=');
-      acc[key] = valueParts.join('=');
-      return acc;
-    }, {} as Record<string, string>);
-
-    const token = cookies['auth-token'];
-    if (!token) {
-      return null;
-    }
-
-    // Verify JWT token
-    const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) {
-      console.error('JWT_SECRET environment variable is not set');
-      return null;
-    }
-
-    const decoded = jwt.verify(token, jwtSecret) as Session;
-
-    // Check if token is expired
-    if (decoded.exp * 1000 < Date.now()) {
-      return null;
-    }
-
-    return decoded;
-  } catch (error) {
-    console.error('Session verification error:', error);
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret) {
+    console.error('JWT_SECRET environment variable is not set');
     return null;
   }
+
+  const verifyToken = (token: string): Session | null => {
+    try {
+      const decoded = jwt.verify(token, jwtSecret) as Session;
+      if (decoded.exp * 1000 < Date.now()) return null;
+      return decoded;
+    } catch {
+      return null;
+    }
+  };
+
+  // 1. Authorization: Bearer (for native app / API clients)
+  const authHeader = request.headers.get('authorization') || request.headers.get('Authorization');
+  if (authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    const session = verifyToken(token);
+    if (session) return session;
+  }
+
+  // 2. Fallback: auth-token cookie (for web)
+  const cookieHeader = request.headers.get('cookie');
+  if (!cookieHeader) return null;
+
+  const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
+    const [key, ...valueParts] = cookie.trim().split('=');
+    acc[key] = valueParts.join('=');
+    return acc;
+  }, {} as Record<string, string>);
+
+  const token = cookies['auth-token'];
+  if (!token) return null;
+
+  return verifyToken(token);
 }
 
 /**

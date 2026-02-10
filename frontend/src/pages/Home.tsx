@@ -56,33 +56,20 @@ const Home: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const fetchHealthData = async () => {
-    try {
-      const response = await apiGet('/api/health');
-
-      if (response.ok) {
-        const data = await response.json();
-        setHealthData(data);
-      } else if (response.status === 401) {
-        setError('Authentication required');
-      } else {
-        setError('Failed to load health data');
-      }
-    } catch (err) {
-      console.error('Error fetching health data:', err);
-      setError('Network error');
+    const result = await apiGet<HealthData>('/api/health');
+    if (result.ok && result.data) {
+      setHealthData(result.data);
+    } else if (result.status === 401) {
+      setError('Authentication required');
+    } else {
+      setError(result.error || 'Failed to load health data');
     }
   };
 
   const fetchSettings = async () => {
-    try {
-      const response = await apiGet('/api/settings');
-
-      if (response.ok) {
-        const data = await response.json();
-        setSettings(data);
-      }
-    } catch (err) {
-      console.error('Error fetching settings:', err);
+    const result = await apiGet<UserSettings>('/api/settings');
+    if (result.ok && result.data) {
+      setSettings(result.data);
     }
   };
 

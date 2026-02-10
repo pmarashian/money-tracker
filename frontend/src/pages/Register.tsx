@@ -45,25 +45,14 @@ const Register: React.FC = () => {
       return;
     }
 
-    try {
-      const response = await apiPost('/api/auth/register', { email, password });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        // Success - redirect to login page
-        navigate('/login');
-      } else {
-        // Error - show error message
-        setError(data.message || 'Registration failed');
-        setShowAlert(true);
-      }
-    } catch (err) {
-      setError('Network error. Please try again.');
+    const result = await apiPost('/api/auth/register', { email, password });
+    if (result.ok) {
+      navigate('/login');
+    } else {
+      setError(result.error || 'Registration failed');
       setShowAlert(true);
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   };
 
   return (
@@ -84,7 +73,7 @@ const Register: React.FC = () => {
             <IonInput
               type="email"
               value={email}
-              onIonChange={(e) => setEmail(e.detail.value!)}
+              onIonInput={(e) => setEmail(e.detail.value ?? '')}
               required
               placeholder="Enter your email"
             />
@@ -95,7 +84,7 @@ const Register: React.FC = () => {
             <IonInput
               type="password"
               value={password}
-              onIonChange={(e) => setPassword(e.detail.value!)}
+              onIonInput={(e) => setPassword(e.detail.value ?? '')}
               required
               placeholder="Create a password"
             />
@@ -106,7 +95,7 @@ const Register: React.FC = () => {
             <IonInput
               type="password"
               value={confirmPassword}
-              onIonChange={(e) => setConfirmPassword(e.detail.value!)}
+              onIonInput={(e) => setConfirmPassword(e.detail.value ?? '')}
               required
               placeholder="Confirm your password"
             />
