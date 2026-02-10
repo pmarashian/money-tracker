@@ -349,6 +349,7 @@ const Settings: React.FC = () => {
                     </IonLabel>
                     <IonInput
                       type="number"
+                      inputMode="decimal"
                       value={settings.balance}
                       placeholder="0.00"
                       onIonInput={(e) =>
@@ -363,6 +364,7 @@ const Settings: React.FC = () => {
                     </IonLabel>
                     <IonInput
                       type="number"
+                      inputMode="decimal"
                       value={settings.paycheckAmount}
                       placeholder="2000.00"
                       onIonInput={(e) =>
@@ -402,6 +404,7 @@ const Settings: React.FC = () => {
                     </IonLabel>
                     <IonInput
                       type="number"
+                      inputMode="decimal"
                       value={settings.bonusAmount ?? 0}
                       placeholder="0.00"
                       onIonInput={(e) =>
