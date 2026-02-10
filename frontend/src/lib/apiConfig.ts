@@ -6,23 +6,41 @@
 import { Capacitor } from "@capacitor/core";
 
 const DEFAULT_DEV = "http://localhost:3000";
-const DEFAULT_PROD = "https://your-production-domain.com";
+const DEFAULT_PROD = "https://money-tracker-backend-wine.vercel.app";
 
 /**
  * Get the API base URL for making API calls.
- * Priority: VITE_API_URL env, then Capacitor native (dev/prod), then web dev/prod.
+ * - VITE_API_URL env overrides when set.
+ * - In Capacitor (iOS simulator or device), always use deployed backend (localhost on device is not your machine).
+ * - Web: dev uses localhost, prod uses DEFAULT_PROD.
  */
 export function getApiBaseUrl(): string {
   const fromEnv = import.meta.env.VITE_API_URL;
+
+  console.log("fromEnv", fromEnv);
+
   if (fromEnv && typeof fromEnv === "string") {
+    console.log("fromEnv is string", fromEnv);
     return fromEnv.replace(/\/$/, "");
   }
 
   if (Capacitor.isNativePlatform()) {
-    return import.meta.env.DEV ? DEFAULT_DEV : DEFAULT_PROD;
+    console.log("isNativePlatform");
+    const prodUrl = import.meta.env.VITE_PROD_API_URL ?? DEFAULT_PROD;
+
+    console.log("prodUrl", prodUrl);
+
+    return (typeof prodUrl === "string" ? prodUrl : DEFAULT_PROD).replace(
+      /\/$/,
+      ""
+    );
   }
 
-  return import.meta.env.DEV ? DEFAULT_DEV : DEFAULT_PROD;
+  const apiUrl = import.meta.env.DEV ? DEFAULT_DEV : DEFAULT_PROD;
+
+  console.log("apiUrl", apiUrl);
+
+  return apiUrl;
 }
 
 /**
@@ -30,6 +48,6 @@ export function getApiBaseUrl(): string {
  */
 export function getApiUrl(endpoint: string): string {
   const base = getApiBaseUrl();
-  const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
   return `${base}${path}`;
 }

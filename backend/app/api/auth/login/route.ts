@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { getRedisClient, redisKeys, redisOps } from "@/lib/redis";
 import { setCorsHeaders } from "@/lib/cors";
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
     // Verify password
     let isValidPassword;
     try {
-      isValidPassword = await bcrypt.compare(password, userData.password);
+      isValidPassword = bcrypt.compareSync(password, userData.password);
     } catch (error) {
       console.error("Password verification error:", error);
       const res = NextResponse.json(
