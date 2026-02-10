@@ -58,7 +58,7 @@ function buildMerchantGroups(
   }
 
   const groups: MerchantGroup[] = [];
-  for (const [name, occs] of byMerchant.entries()) {
+  for (const [name, occs] of Array.from(byMerchant.entries())) {
     occs.sort((a, b) => a.postingDate.localeCompare(b.postingDate));
     groups.push({ name, occurrences: occs });
   }
