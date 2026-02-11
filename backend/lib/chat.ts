@@ -50,7 +50,6 @@ USER'S CURRENT FINANCIAL CONTEXT:
 - Paycheck amount: $${userSettings.paycheckAmount} (bi-weekly)
 - Current balance: $${userSettings.balance}
 - Next bonus date: ${userSettings.nextBonusDate}
-- Bonus amount: $${userSettings.bonusAmount || 0}
 
 RECURRING EXPENSES DETECTED:
 ${recurringSummary || 'No recurring expenses detected yet'}

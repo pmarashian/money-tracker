@@ -1,5 +1,6 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { apiGet, apiPost } from '../lib/api';
+import { waitForAuthFlush } from '../lib/authStorage';
 import { useAuthStore } from '../store/authStore';
 
 interface User {
@@ -51,6 +52,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       );
       if (result.ok && result.data?.token) {
         setToken(result.data.token);
+        try {
+          await waitForAuthFlush();
+        } catch (e) {
+          console.warn('Auth persist flush failed, token may not survive force-close:', e);
+        }
         if (result.data.user) {
           setUser(result.data.user);
         }
@@ -59,7 +65,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       return { success: false, error: result.error || 'Login failed' };
     } catch (error) {
-      return { success: false, error: 'Network error' };
+      return { success: false, error: error instanceof Error ? error.message : 'Network error' };
     }
   };
 

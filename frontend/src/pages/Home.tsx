@@ -18,6 +18,7 @@ import { useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { calendarOutline, settingsOutline } from 'ionicons/icons';
 import { apiGet } from '../lib/api';
+import { parseDateOnlyAsLocal } from '../lib/dateUtils';
 
 interface HealthData {
   status: 'not_enough' | 'enough' | 'too_much';
@@ -109,8 +110,8 @@ const Home: React.FC = () => {
     if (!settings?.paycheckAmount) return null;
     const dateStr = healthData?.nextPaycheckDate ?? settings?.nextPaycheckDate;
     if (dateStr) {
-      const d = new Date(dateStr);
-      if (!isNaN(d.getTime())) return d;
+      const d = parseDateOnlyAsLocal(dateStr);
+      if (d) return d;
     }
     const today = new Date();
     return new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000);
@@ -120,7 +121,8 @@ const Home: React.FC = () => {
     if (!settings?.nextBonusDate) return null;
 
     const today = new Date();
-    const bonusDate = new Date(settings.nextBonusDate);
+    const bonusDate = parseDateOnlyAsLocal(settings.nextBonusDate);
+    if (!bonusDate) return null;
     const diffTime = bonusDate.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
@@ -265,7 +267,6 @@ const Home: React.FC = () => {
                       </span>
                       <span className="home-upcoming__value">
                         {daysUntilBonus} days
-                        {settings?.bonusAmount ? ` · ${formatCurrency(settings.bonusAmount)}` : ''}
                       </span>
                     </div>
                   )}

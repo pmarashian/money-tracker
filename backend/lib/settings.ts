@@ -18,7 +18,6 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
   balance: 0,
   paycheckAmount: 2000, // Default bi-weekly paycheck
   nextBonusDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
-  bonusAmount: 0,
 };
 
 /**
@@ -40,7 +39,7 @@ export async function getUserSettings(userId: string): Promise<UserSettings> {
       balance: typeof settings.balance === 'number' ? settings.balance : DEFAULT_USER_SETTINGS.balance,
       paycheckAmount: typeof settings.paycheckAmount === 'number' ? settings.paycheckAmount : DEFAULT_USER_SETTINGS.paycheckAmount,
       nextBonusDate: typeof settings.nextBonusDate === 'string' ? settings.nextBonusDate : DEFAULT_USER_SETTINGS.nextBonusDate,
-      bonusAmount: typeof settings.bonusAmount === 'number' ? settings.bonusAmount : DEFAULT_USER_SETTINGS.bonusAmount,
+      ...(typeof settings.bonusAmount === 'number' ? { bonusAmount: settings.bonusAmount } : {}),
       nextPaycheckDate: typeof settings.nextPaycheckDate === 'string' ? settings.nextPaycheckDate : undefined,
     };
   } catch (error) {
@@ -106,11 +105,6 @@ function validateUserSettings(settings: UserSettings): string | null {
   now.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
   if (bonusDate < now) {
     return 'Next bonus date cannot be in the past';
-  }
-
-  // Validate bonusAmount (if provided, must be non-negative)
-  if (settings.bonusAmount !== undefined && (typeof settings.bonusAmount !== 'number' || isNaN(settings.bonusAmount) || settings.bonusAmount < 0)) {
-    return 'Bonus amount must be a non-negative number';
   }
 
   // Validate nextPaycheckDate (if provided, must be valid date string)

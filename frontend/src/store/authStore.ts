@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { getAuthStorage } from "../lib/authStorage";
+import { getLazyAuthStorageWithFlush } from "../lib/authStorage";
 
 interface AuthStore {
   token: string | null;
@@ -34,7 +34,7 @@ export const useAuthStore = create<AuthStore>()(
     }),
     {
       name: "auth-storage",
-      storage: createJSONStorage(() => getAuthStorage()),
+      storage: createJSONStorage(() => getLazyAuthStorageWithFlush()),
     }
   )
 );

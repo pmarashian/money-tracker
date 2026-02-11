@@ -102,7 +102,6 @@ const Settings: React.FC = () => {
       balance: Number(settings.balance) || 0,
       paycheckAmount: !isNaN(paycheckNum) ? paycheckNum : 2000,
       nextBonusDate: settings.nextBonusDate,
-      bonusAmount: settings.bonusAmount !== undefined && settings.bonusAmount !== null ? Number(settings.bonusAmount) : 0,
     };
     if (settings.nextPaycheckDate) {
       payload.nextPaycheckDate = settings.nextPaycheckDate;
@@ -396,22 +395,6 @@ const Settings: React.FC = () => {
                       type="date"
                       value={settings.nextBonusDate}
                       onIonChange={(e) => handleInputChange('nextBonusDate', e.detail.value || '')}
-                    />
-                  </IonItem>
-                  <IonItem>
-                    <IonLabel position="stacked" className="font-body">
-                      Bonus amount ($) (optional)
-                    </IonLabel>
-                    <IonInput
-                      type="number"
-                      inputMode="decimal"
-                      value={settings.bonusAmount ?? 0}
-                      placeholder="0.00"
-                      onIonInput={(e) =>
-                        handleInputChange('bonusAmount', parseFloat((e.detail.value as string) || '0') || 0)
-                      }
-                      step="0.01"
-                      min="0"
                     />
                   </IonItem>
                 </div>

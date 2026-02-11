@@ -62,7 +62,10 @@ function calculateInflows(userSettings: UserSettings, projectionDays: number = 9
   let projectedPaychecks = 0;
   let currentDate = new Date(firstPaycheck);
   while (currentDate <= endDate) {
-    projectedPaychecks += paycheckAmount;
+    // Exclude paycheck on nextBonusDate — that payday is the reset for the next cycle
+    if (currentDate.getTime() < nextBonusDate.getTime()) {
+      projectedPaychecks += paycheckAmount;
+    }
     currentDate = new Date(currentDate.getTime() + paycheckIntervalDays * 24 * 60 * 60 * 1000);
   }
 
