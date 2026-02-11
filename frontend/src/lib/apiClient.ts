@@ -1,5 +1,5 @@
 import { getApiBaseUrl } from "./apiConfig";
-import { useAuthStore } from "../store/authStore";
+import { getAuthToken, clearAuthToken } from "./authStorage";
 import logger from "./logger";
 
 export interface ApiResponse<T = unknown> {
@@ -9,97 +9,11 @@ export interface ApiResponse<T = unknown> {
   error?: string;
 }
 
-/**
- * Check if Zustand persist has finished hydrating from storage.
- * Returns true if hydrated, false if still hydrating.
- */
-function isHydrated(): boolean {
-  const persist = useAuthStore.persist;
-  return persist?.hasHydrated?.() ?? false;
-}
-
-/**
- * Wait for Zustand persist to finish hydrating, with a timeout.
- * Returns true if hydrated successfully, false if timeout.
- */
-async function waitForHydration(timeoutMs: number = 1000): Promise<boolean> {
-  if (isHydrated()) {
-    return true;
-  }
-
-  return new Promise((resolve) => {
-    const startTime = Date.now();
-    const checkInterval = setInterval(() => {
-      if (isHydrated()) {
-        clearInterval(checkInterval);
-        resolve(true);
-      } else if (Date.now() - startTime > timeoutMs) {
-        clearInterval(checkInterval);
-        logger.warn('Hydration timeout: proceeding without waiting for token hydration');
-        resolve(false);
-      }
-    }, 10);
-
-    // Also listen for hydration event
-    const persist = useAuthStore.persist;
-    const unsub = persist?.onFinishHydration?.(() => {
-      clearInterval(checkInterval);
-      unsub?.();
-      resolve(true);
-    });
-  });
-}
-
 class ApiClient {
   private baseUrl: string;
 
   constructor() {
     this.baseUrl = getApiBaseUrl();
-  }
-
-  /**
-   * Get the auth token, ensuring hydration has completed first.
-   * Returns null if no token exists.
-   * 
-   * Strategy:
-   * 1. First check store state immediately (token might have been set synchronously after login)
-   * 2. If no token and not hydrated, wait for hydration (to read from storage)
-   * 3. After hydration (or timeout), check store state again
-   */
-  private async getTokenWithHydrationCheck(): Promise<string | null> {
-    // First, check if token exists in store state immediately
-    // This handles the case where token was just set (e.g., after login)
-    // even if hydration hasn't completed yet
-    let token = useAuthStore.getState().getToken();
-    if (token) {
-      logger.debug('[API] Token found in store state (immediate)');
-      return token;
-    }
-
-    // If already hydrated, token doesn't exist
-    if (isHydrated()) {
-      logger.debug('[API] Store hydrated, no token found');
-      return null;
-    }
-
-    // Not hydrated yet - wait for hydration to read from storage
-    logger.debug('[API] Waiting for Zustand hydration before reading token...');
-    const hydrated = await waitForHydration(1000);
-    
-    // After hydration (or timeout), check store state again
-    // Even if hydration timed out, the token might now be available
-    token = useAuthStore.getState().getToken();
-    if (token) {
-      logger.debug('[API] Token found after hydration check');
-      return token;
-    }
-
-    if (!hydrated) {
-      logger.warn('[API] Hydration incomplete and no token found');
-    } else {
-      logger.debug('[API] Store hydrated, no token found');
-    }
-    return null;
   }
 
   private async makeRequest<T>(
@@ -117,8 +31,15 @@ class ApiClient {
       headers["Content-Type"] = "application/json";
     }
 
-    // Wait for hydration before reading token
-    const token = await this.getTokenWithHydrationCheck();
+    // Get token from storage (async)
+    const token = await getAuthToken();
+    await logger.info("[API] Making request", {
+      endpoint,
+      method: options.method || "GET",
+      hasToken: !!token,
+      tokenLength: token?.length ?? 0,
+    });
+    
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
     }
@@ -129,8 +50,6 @@ class ApiClient {
     };
 
     try {
-      logger.debug(`${config.method || 'GET'}: ${url}`);
-
       const response = await fetch(url, config);
 
       const result: ApiResponse<T> = {
@@ -139,12 +58,20 @@ class ApiClient {
       };
 
       // Clear token on 401 if we sent a token (meaning it's invalid)
-      // Don't clear if we didn't send a token (might be during initial hydration)
       if (response.status === 401 && token) {
-        logger.info('[API] 401 response with token: clearing invalid token');
-        useAuthStore.getState().clearToken();
-      } else if (response.status === 401) {
-        logger.debug('[API] 401 response without token (expected during initial load)');
+        await logger.warn("[API] 401 Unauthorized response - token invalid, clearing", {
+          endpoint,
+          method: options.method || "GET",
+          hadToken: true,
+          tokenLength: token.length,
+        });
+        await clearAuthToken();
+      } else if (response.status === 401 && !token) {
+        await logger.info("[API] 401 Unauthorized response - no token was sent", {
+          endpoint,
+          method: options.method || "GET",
+          hadToken: false,
+        });
       }
 
       const text = await response.text();
@@ -171,10 +98,27 @@ class ApiClient {
           result.error =
             text || `Request failed with status ${response.status}`;
       }
+      await logger.info("[API] Request completed", {
+        endpoint,
+        method: options.method || "GET",
+        status: result.status,
+        ok: result.ok,
+        hasError: !!result.error,
+      });
+      
       return result;
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Network error";
-      logger.error('[API] Request failed:', err);
+      await logger.error("[API] Request failed", {
+        endpoint,
+        method: options.method || "GET",
+        error: errorMessage,
+        errorStack: err instanceof Error ? err.stack : undefined,
+        errorName: err instanceof Error ? err.name : undefined,
+        hadToken: !!token,
+        tokenLength: token?.length ?? 0,
+      });
+      
       return {
         ok: false,
         status: 0,

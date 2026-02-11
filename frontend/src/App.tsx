@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import {
   IonApp,
   IonTabBar,
@@ -17,8 +18,27 @@ import Expenses from './pages/Expenses';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import { AuthProvider } from './hooks/useAuth';
+import { AuthProvider, useAuth } from './hooks/useAuth';
 import ProtectedRoute from './components/ProtectedRoute';
+import logger from './lib/logger';
+
+const InitialRoute: React.FC = () => {
+  const { user, loading } = useAuth();
+
+  // Wait for auth check to complete before redirecting
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  // Redirect based on authentication state
+  if (user) {
+    logger.info('[App] Initial route: user authenticated, redirecting to /app/home');
+    return <Navigate to="/app/home" replace />;
+  }
+
+  logger.info('[App] Initial route: user not authenticated, redirecting to /login');
+  return <Navigate to="/login" replace />;
+};
 
 const TabBar: React.FC = () => {
   const location = useLocation();
@@ -72,7 +92,7 @@ const AppContent: React.FC = () => {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/" element={<InitialRoute />} />
       <Route path="/app/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
       <Route path="/app/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
       <Route path="/app/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
@@ -107,6 +127,14 @@ const MainLayout: React.FC = () => {
 };
 
 const App: React.FC = () => {
+  useEffect(() => {
+    logger.info('[App] App component mounted');
+    
+    return () => {
+      logger.info('[App] App component unmounting');
+    };
+  }, []);
+
   return (
     <IonApp style={{
       margin: 0,
@@ -117,13 +145,25 @@ const App: React.FC = () => {
       flexDirection: 'column'
     }}>
       <AuthProvider>
-        <Router>
+        <RouterWrapper>
           <MainLayout />
           <TabBar />
-        </Router>
+        </RouterWrapper>
       </AuthProvider>
     </IonApp>
   );
+};
+
+const RouterWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  useEffect(() => {
+    logger.info('[App] Router initialized');
+    
+    return () => {
+      logger.info('[App] Router unmounting');
+    };
+  }, []);
+
+  return <Router>{children}</Router>;
 };
 
 export default App;

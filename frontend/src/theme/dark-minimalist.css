@@ -406,7 +406,7 @@ a:hover, ion-router-link:hover {
 
 /* Settings page */
 .settings-section {
-  margin-bottom: 1.5rem;
+  margin-bottom: 2rem;
 }
 
 .settings-section:last-of-type {
@@ -417,8 +417,88 @@ a:hover, ion-router-link:hover {
   font-family: var(--font-heading) !important;
   font-size: 0.85em;
   letter-spacing: 0.5px;
-  margin: 0 0 1rem 0;
+  margin: 0 0 1.25rem 0;
   color: var(--ion-text-color);
+  text-transform: uppercase;
+}
+
+/* Enhanced section cards with pixel-style borders */
+.settings-section-card {
+  border: 2px solid var(--ion-color-step-300) !important;
+  border-radius: 0 !important;
+  background: var(--ion-color-step-50) !important;
+  position: relative;
+  overflow: visible;
+}
+
+.settings-section-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--ion-color-step-400);
+}
+
+/* Data Import section - neutral gray-blue accent */
+.settings-section-card--data {
+  border-color: var(--ion-color-step-400) !important;
+  background: var(--ion-color-step-50) !important;
+}
+
+.settings-section-card--data::before {
+  background: var(--ion-color-step-500);
+}
+
+/* Financial Settings section - lighter accent */
+.settings-section-card--financial {
+  border-color: var(--ion-color-step-500) !important;
+  background: var(--ion-color-step-100) !important;
+}
+
+.settings-section-card--financial::before {
+  background: var(--ion-color-step-600);
+}
+
+/* Account section - darker accent */
+.settings-section-card--account {
+  border-color: var(--ion-color-step-300) !important;
+  background: var(--ion-color-step-50) !important;
+}
+
+.settings-section-card--account::before {
+  background: var(--ion-color-step-400);
+}
+
+/* Enhanced section header with pixel-style decoration */
+.settings-section-header {
+  position: relative;
+  padding-bottom: 0.75rem;
+  margin-bottom: 1rem;
+  border-bottom: 2px solid var(--ion-color-step-300);
+}
+
+.settings-section-header::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 40px;
+  height: 2px;
+  background: var(--ion-color-step-600);
+}
+
+.settings-section-card--data .settings-section-header::after {
+  background: var(--ion-color-step-500);
+}
+
+.settings-section-card--financial .settings-section-header::after {
+  background: var(--ion-color-step-600);
+}
+
+.settings-section-card--account .settings-section-header::after {
+  background: var(--ion-color-step-400);
 }
 
 .settings-upload-zone {

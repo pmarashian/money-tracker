@@ -38,7 +38,7 @@ const DEFAULT_SETTINGS: UserSettings = {
 
 const Settings: React.FC = () => {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, changePassword } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [settings, setSettings] = useState<UserSettings>({ ...DEFAULT_SETTINGS });
@@ -60,6 +60,12 @@ const Settings: React.FC = () => {
   } | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+
+  // Password change state
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordChanging, setPasswordChanging] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
 
   const showToast = (message: string, color: 'success' | 'danger') => {
     setToastMessage(message);
@@ -218,6 +224,41 @@ const Settings: React.FC = () => {
     setIsUploading(false);
   };
 
+  const handlePasswordChange = async () => {
+    setPasswordError('');
+
+    // Validation
+    if (!newPassword) {
+      setPasswordError('New password is required');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordError('Password must be at least 6 characters long');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Passwords do not match');
+      return;
+    }
+
+    setPasswordChanging(true);
+    const result = await changePassword(newPassword);
+    
+    if (result.success) {
+      showToast('Password changed successfully', 'success');
+      setNewPassword('');
+      setConfirmPassword('');
+      setPasswordError('');
+    } else {
+      setPasswordError(result.error || 'Failed to change password');
+      showToast(result.error || 'Failed to change password', 'danger');
+    }
+    
+    setPasswordChanging(false);
+  };
+
   if (loading) {
     return (
       <IonPage>
@@ -246,11 +287,8 @@ const Settings: React.FC = () => {
 
           {/* Data import */}
           <section className="settings-section" aria-labelledby="settings-data-import">
-            <h2 id="settings-data-import" className="settings-section__title">
-              Data import
-            </h2>
-            <IonCard>
-              <IonCardHeader>
+            <IonCard className="settings-section-card settings-section-card--data">
+              <IonCardHeader className="settings-section-header">
                 <IonCardTitle className="font-heading">Upload CSV</IonCardTitle>
               </IonCardHeader>
               <IonCardContent>
@@ -335,10 +373,10 @@ const Settings: React.FC = () => {
 
           {/* Financial settings */}
           <section className="settings-section" aria-labelledby="settings-financial">
-            <h2 id="settings-financial" className="settings-section__title">
-              Financial settings
-            </h2>
-            <IonCard>
+            <IonCard className="settings-section-card settings-section-card--financial">
+              <IonCardHeader className="settings-section-header">
+                <IonCardTitle className="font-heading">Balance &amp; Income</IonCardTitle>
+              </IonCardHeader>
               <IonCardContent>
                 <span className="settings-form-group__label">Balance &amp; income</span>
                 <div className="settings-form-group">
@@ -416,15 +454,72 @@ const Settings: React.FC = () => {
 
           {/* Account */}
           <section className="settings-section" aria-labelledby="settings-account">
-            <h2 id="settings-account" className="settings-section__title">
-              Account
-            </h2>
-            <IonCard>
+            <IonCard className="settings-section-card settings-section-card--account">
+              <IonCardHeader className="settings-section-header">
+                <IonCardTitle className="font-heading">Account Settings</IonCardTitle>
+              </IonCardHeader>
               <IonCardContent>
-                <div className="settings-primary-action">
+                <span className="settings-form-group__label">Change Password</span>
+                <div className="settings-form-group">
+                  <IonItem>
+                    <IonLabel position="stacked" className="font-body">
+                      New Password
+                    </IonLabel>
+                    <IonInput
+                      type="password"
+                      value={newPassword}
+                      placeholder="Enter new password"
+                      onIonInput={(e) => setNewPassword(e.detail.value ?? '')}
+                      disabled={passwordChanging}
+                    />
+                  </IonItem>
+                  <IonItem>
+                    <IonLabel position="stacked" className="font-body">
+                      Confirm Password
+                    </IonLabel>
+                    <IonInput
+                      type="password"
+                      value={confirmPassword}
+                      placeholder="Confirm new password"
+                      onIonInput={(e) => setConfirmPassword(e.detail.value ?? '')}
+                      disabled={passwordChanging}
+                    />
+                  </IonItem>
+                  {passwordError && (
+                    <IonText color="danger" className="font-body" style={{ display: 'block', marginTop: '0.5rem', paddingLeft: '1rem' }}>
+                      {passwordError}
+                    </IonText>
+                  )}
+                </div>
+                <div className="settings-primary-action" style={{ marginTop: '1rem' }}>
                   <IonButton
                     expand="block"
                     size="default"
+                    onClick={handlePasswordChange}
+                    disabled={
+                      passwordChanging ||
+                      !newPassword ||
+                      !confirmPassword ||
+                      newPassword.length < 6 ||
+                      newPassword !== confirmPassword
+                    }
+                    className="font-body"
+                  >
+                    {passwordChanging ? (
+                      <>
+                        <IonSpinner slot="start" name="crescent" />
+                        Changing Password...
+                      </>
+                    ) : (
+                      'Change Password'
+                    )}
+                  </IonButton>
+                </div>
+                <div className="settings-primary-action" style={{ marginTop: '1rem' }}>
+                  <IonButton
+                    expand="block"
+                    size="default"
+                    color="danger"
                     onClick={async () => {
                       await logout();
                       navigate('/login');

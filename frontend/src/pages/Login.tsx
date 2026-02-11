@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   IonContent,
   IonPage,
@@ -22,7 +22,15 @@ const Login: React.FC = () => {
   const [error, setError] = useState("");
   const [showAlert, setShowAlert] = useState(false);
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, user, loading: authLoading } = useAuth();
+
+  // Redirect to app if already authenticated
+  useEffect(() => {
+    if (!authLoading && user) {
+      logger.info("[Login] User already authenticated, redirecting to app");
+      navigate("/app/home", { replace: true });
+    }
+  }, [user, authLoading, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,11 +50,25 @@ const Login: React.FC = () => {
   return (
     <IonPage>
       <IonContent className="ion-padding" fullscreen>
-        <div className="ion-text-center ion-margin-bottom">
-          <p className="font-body">Sign in</p>
-        </div>
+        <div style={{ paddingTop: '5rem' }}>
+          <div className="ion-text-center" style={{ marginBottom: '1.5rem' }}>
+            <img
+              src="/images/money-bag.png"
+              alt="Money Tracker"
+              style={{
+                height: '80px',
+                width: 'auto',
+                display: 'block',
+                margin: '0 auto',
+              }}
+            />
+          </div>
 
-        <form onSubmit={handleLogin}>
+          <div className="ion-text-center ion-margin-bottom">
+            <p className="font-body">Sign in</p>
+          </div>
+
+          <form onSubmit={handleLogin}>
           <IonItem>
             <IonLabel position="stacked">Email</IonLabel>
             <IonInput
@@ -79,10 +101,11 @@ const Login: React.FC = () => {
           </IonButton>
         </form>
 
-        <div className="ion-text-center ion-margin-top">
-          <IonText color="medium">
-            Don't have an account? <Link to="/register">Sign Up</Link>
-          </IonText>
+          <div className="ion-text-center ion-margin-top">
+            <IonText color="medium">
+              Don't have an account? <Link to="/register">Sign Up</Link>
+            </IonText>
+          </div>
         </div>
 
         <IonLoading isOpen={loading} message="Signing in..." />

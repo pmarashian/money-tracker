@@ -1,6 +1,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { setupIonicReact } from '@ionic/react';
+import { Capacitor } from '@capacitor/core';
 import App from './App';
 import logger from './lib/logger';
 
@@ -28,11 +29,23 @@ import './theme/dark-minimalist.css';
 
 setupIonicReact();
 
+// Detect platform
+const platform = Capacitor.isNativePlatform() ? 'native' : 'web';
+const platformName = Capacitor.getPlatform();
+
 // Initialize logger
-logger.info('[App] Initializing application');
+logger.info('[App] Initializing application', {
+  platform,
+  platformName,
+  isNative: Capacitor.isNativePlatform(),
+});
 
 // Flush logs on page unload
 window.addEventListener('beforeunload', () => {
+  logger.info('[App] App unloading - flushing logs', {
+    platform,
+    platformName,
+  });
   logger.flush().catch(() => {
     // Ignore flush errors on unload
   });

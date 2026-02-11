@@ -1,116 +1,269 @@
 /**
- * Storage backend for auth persist (Zustand).
+ * Auth token storage utilities.
  * On native (Capacitor iOS/Android), uses Preferences so the token survives force-close.
  * On web, uses localStorage.
+ * Falls back to localStorage if Preferences is not available (e.g., plugin not implemented).
  */
 
 import { Capacitor } from "@capacitor/core";
 import { Preferences } from "@capacitor/preferences";
+import logger from "./logger";
 
-export type AuthStorageBackend = {
-  getItem: (name: string) => string | null | Promise<string | null>;
-  setItem: (name: string, value: string) => void | Promise<void>;
-  removeItem: (name: string) => void | Promise<void>;
-};
-
-function webStorage(): AuthStorageBackend {
-  return {
-    getItem: (name: string) => {
-      if (typeof window === "undefined") return null;
-      return window.localStorage.getItem(name);
-    },
-    setItem: (name: string, value: string) => {
-      if (typeof window === "undefined") return;
-      window.localStorage.setItem(name, value);
-    },
-    removeItem: (name: string) => {
-      if (typeof window === "undefined") return;
-      window.localStorage.removeItem(name);
-    },
-  };
-}
-
-function nativeStorage(): AuthStorageBackend {
-  return {
-    getItem: async (name: string) => {
-      const { value } = await Preferences.get({ key: name });
-      return value ?? null;
-    },
-    setItem: (name: string, value: string) =>
-      Preferences.set({ key: name, value }),
-    removeItem: (name: string) => Preferences.remove({ key: name }),
-  };
-}
+const STORAGE_KEY = "auth-token";
 
 /**
- * Returns the storage backend for auth state.
- * Native: Capacitor Preferences (persists across force-close on iOS/Android).
- * Web: localStorage.
+ * Check if Preferences plugin is available and working.
+ * Returns true if plugin is available, false otherwise.
  */
-export function getAuthStorage(): AuthStorageBackend {
-  if (Capacitor.isNativePlatform()) {
-    return nativeStorage();
+async function isPreferencesAvailable(): Promise<boolean> {
+  if (!Capacitor.isNativePlatform()) {
+    return false;
   }
-  return webStorage();
+  
+  try {
+    // Try a simple operation to verify plugin is available
+    await Preferences.keys();
+    return true;
+  } catch (error: any) {
+    await logger.warn("[AuthStorage] Preferences plugin availability check failed", {
+      errorCode: error?.code,
+      errorMessage: error?.message,
+      errorName: error?.name,
+      errorStack: error?.stack,
+      platform: Capacitor.getPlatform(),
+    });
+    return false;
+  }
 }
 
 /**
- * Returns a storage adapter that delegates to getAuthStorage() on every call.
- * Use this for Zustand persist so the backend is resolved at read/write time
- * (e.g. after Capacitor is ready on native) instead of once at store creation.
+ * Get the auth token from storage.
+ * Returns null if no token exists.
+ * Falls back to localStorage if Preferences is not available.
  */
-export function getLazyAuthStorage(): AuthStorageBackend {
-  return {
-    getItem(name: string): string | null | Promise<string | null> {
-      return getAuthStorage().getItem(name);
-    },
-    setItem(name: string, value: string): void | Promise<void> {
-      const result = getAuthStorage().setItem(name, value);
-      return result instanceof Promise ? result : undefined;
-    },
-    removeItem(name: string): void | Promise<void> {
-      const result = getAuthStorage().removeItem(name);
-      return result instanceof Promise ? result : undefined;
-    },
-  };
+export async function getAuthToken(): Promise<string | null> {
+  const platform = Capacitor.isNativePlatform() ? "native" : "web";
+  const platformName = Capacitor.getPlatform();
+  await logger.info("[AuthStorage] getAuthToken called", { platform, platformName });
+  
+  try {
+    // Try Preferences first if on native platform
+    if (Capacitor.isNativePlatform()) {
+      const preferencesAvailable = await isPreferencesAvailable();
+      
+      if (preferencesAvailable) {
+        try {
+          const { value } = await Preferences.get({ key: STORAGE_KEY });
+          const tokenExists = value !== null && value !== undefined;
+          await logger.info("[AuthStorage] Retrieved token from Preferences", {
+            platform: "native",
+            platformName,
+            storageMethod: "Preferences",
+            tokenExists,
+            tokenLength: value?.length ?? 0,
+          });
+          return value ?? null;
+        } catch (error: any) {
+          // Log detailed error information for diagnostics
+          await logger.error("[AuthStorage] Preferences.get failed despite availability check", {
+            platform: "native",
+            platformName,
+            storageMethod: "Preferences",
+            errorMessage: error?.message,
+            errorCode: error?.code,
+            errorName: error?.name,
+            errorStack: error?.stack,
+            errorString: String(error),
+          });
+          // Fall through to localStorage
+        }
+      } else {
+        await logger.warn("[AuthStorage] Preferences plugin not available, skipping Preferences attempt", {
+          platform: "native",
+          platformName,
+        });
+        // Fall through to localStorage
+      }
+    }
+    
+    // Web or Preferences unavailable: use localStorage
+    if (typeof window === "undefined") {
+      await logger.warn("[AuthStorage] window is undefined, cannot retrieve token", {
+        platform,
+        storageMethod: "localStorage",
+      });
+      return null;
+    }
+    
+    const value = window.localStorage.getItem(STORAGE_KEY);
+    const tokenExists = value !== null;
+    await logger.info("[AuthStorage] Retrieved token from localStorage", {
+      platform,
+      platformName,
+      storageMethod: "localStorage",
+      tokenExists,
+      tokenLength: value?.length ?? 0,
+      warning: Capacitor.isNativePlatform() ? "Using localStorage on native platform - tokens may not persist after force-close. Ensure Preferences plugin is properly synced." : undefined,
+    });
+    return value;
+  } catch (error: any) {
+    await logger.error("[AuthStorage] Failed to get token", {
+      platform,
+      error: error.message,
+      errorStack: error.stack,
+    });
+    return null;
+  }
 }
 
-/** Last setItem promise from the flush-tracking wrapper (used so login can await persist write). */
-let lastAuthSetItemPromise: Promise<void> | null = null;
-
 /**
- * Wraps a storage backend and tracks the latest setItem promise so callers can await persistence.
+ * Set the auth token in storage.
+ * On native platforms with Preferences available, this persists across app force-close.
+ * Falls back to localStorage if Preferences is not available.
  */
-function wrapWithFlushTracking(backend: AuthStorageBackend): AuthStorageBackend {
-  return {
-    getItem(name: string): string | null | Promise<string | null> {
-      return backend.getItem(name);
-    },
-    setItem(name: string, value: string): void | Promise<void> {
-      const p = Promise.resolve(backend.setItem(name, value));
-      lastAuthSetItemPromise = p;
-      return p;
-    },
-    removeItem(name: string): void | Promise<void> {
-      return backend.removeItem(name);
-    },
-  };
+export async function setAuthToken(token: string): Promise<void> {
+  const platform = Capacitor.isNativePlatform() ? "native" : "web";
+  const platformName = Capacitor.getPlatform();
+  await logger.info("[AuthStorage] setAuthToken called", {
+    platform,
+    platformName,
+    tokenLength: token.length,
+  });
+  
+  try {
+    // Try Preferences first if on native platform
+    if (Capacitor.isNativePlatform()) {
+      const preferencesAvailable = await isPreferencesAvailable();
+      
+      if (preferencesAvailable) {
+        try {
+          await Preferences.set({ key: STORAGE_KEY, value: token });
+          await logger.info("[AuthStorage] Token saved successfully to Preferences", {
+            platform: "native",
+            platformName,
+            storageMethod: "Preferences",
+            tokenLength: token.length,
+          });
+          return;
+        } catch (error: any) {
+          // Log detailed error information for diagnostics
+          await logger.error("[AuthStorage] Preferences.set failed despite availability check", {
+            platform: "native",
+            platformName,
+            storageMethod: "Preferences",
+            errorMessage: error?.message,
+            errorCode: error?.code,
+            errorName: error?.name,
+            errorStack: error?.stack,
+            errorString: String(error),
+            tokenLength: token.length,
+          });
+          // Fall through to localStorage
+        }
+      } else {
+        await logger.warn("[AuthStorage] Preferences plugin not available, skipping Preferences attempt", {
+          platform: "native",
+          platformName,
+        });
+        // Fall through to localStorage
+      }
+    }
+    
+    // Web or Preferences unavailable: use localStorage
+    if (typeof window === "undefined") {
+      const error = new Error("Cannot set token: window is undefined");
+      await logger.error("[AuthStorage] Cannot set token: window is undefined", {
+        platform,
+        storageMethod: "localStorage",
+      });
+      throw error;
+    }
+    
+    window.localStorage.setItem(STORAGE_KEY, token);
+    await logger.info("[AuthStorage] Token saved successfully to localStorage", {
+      platform,
+      platformName,
+      storageMethod: "localStorage",
+      tokenLength: token.length,
+      warning: Capacitor.isNativePlatform() ? "Using localStorage on native platform - tokens may not persist after force-close. Ensure Preferences plugin is properly synced." : undefined,
+    });
+  } catch (error: any) {
+    await logger.error("[AuthStorage] Failed to set token", {
+      platform,
+      error: error.message,
+      errorStack: error.stack,
+      tokenLength: token.length,
+    });
+    throw error;
+  }
 }
 
 /**
- * Returns the same as getLazyAuthStorage() but wrapped so setItem is tracked for waitForAuthFlush().
- * Use this for Zustand persist when you need to await the write after login on native.
+ * Clear the auth token from storage.
+ * Falls back to localStorage if Preferences is not available.
  */
-export function getLazyAuthStorageWithFlush(): AuthStorageBackend {
-  return wrapWithFlushTracking(getLazyAuthStorage());
-}
-
-/**
- * Waits for the most recent auth persist write to complete.
- * Call after setToken (e.g. after login) so the token is persisted before returning.
- */
-export async function waitForAuthFlush(): Promise<void> {
-  const p = lastAuthSetItemPromise;
-  lastAuthSetItemPromise = null;
-  if (p) await p;
+export async function clearAuthToken(): Promise<void> {
+  const platform = Capacitor.isNativePlatform() ? "native" : "web";
+  const platformName = Capacitor.getPlatform();
+  await logger.info("[AuthStorage] clearAuthToken called", { platform, platformName });
+  
+  try {
+    // Try Preferences first if on native platform
+    if (Capacitor.isNativePlatform()) {
+      const preferencesAvailable = await isPreferencesAvailable();
+      
+      if (preferencesAvailable) {
+        try {
+          await Preferences.remove({ key: STORAGE_KEY });
+          await logger.info("[AuthStorage] Token cleared successfully from Preferences", {
+            platform: "native",
+            platformName,
+            storageMethod: "Preferences",
+          });
+          return;
+        } catch (error: any) {
+          // Log detailed error information for diagnostics
+          await logger.error("[AuthStorage] Preferences.remove failed despite availability check", {
+            platform: "native",
+            platformName,
+            storageMethod: "Preferences",
+            errorMessage: error?.message,
+            errorCode: error?.code,
+            errorName: error?.name,
+            errorStack: error?.stack,
+            errorString: String(error),
+          });
+          // Fall through to localStorage
+        }
+      } else {
+        await logger.warn("[AuthStorage] Preferences plugin not available, skipping Preferences attempt", {
+          platform: "native",
+          platformName,
+        });
+        // Fall through to localStorage
+      }
+    }
+    
+    // Web or Preferences unavailable: use localStorage
+    if (typeof window === "undefined") {
+      await logger.warn("[AuthStorage] window is undefined, cannot clear token", {
+        platform,
+        storageMethod: "localStorage",
+      });
+      return;
+    }
+    
+    window.localStorage.removeItem(STORAGE_KEY);
+    await logger.info("[AuthStorage] Token cleared successfully from localStorage", {
+      platform,
+      storageMethod: "localStorage",
+    });
+  } catch (error: any) {
+    await logger.error("[AuthStorage] Failed to clear token", {
+      platform,
+      error: error.message,
+      errorStack: error.stack,
+    });
+    // Don't throw - clearing is best-effort
+  }
 }
