@@ -2,6 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { setupIonicReact } from '@ionic/react';
 import App from './App';
+import logger from './lib/logger';
 
 /* Core CSS required for Ionic components to work properly */
 import '@ionic/react/css/core.css';
@@ -26,6 +27,16 @@ import './theme/variables.css';
 import './theme/dark-minimalist.css';
 
 setupIonicReact();
+
+// Initialize logger
+logger.info('[App] Initializing application');
+
+// Flush logs on page unload
+window.addEventListener('beforeunload', () => {
+  logger.flush().catch(() => {
+    // Ignore flush errors on unload
+  });
+});
 
 const container = document.getElementById('root');
 const root = createRoot(container!);

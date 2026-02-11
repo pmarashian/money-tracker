@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   IonContent,
   IonPage,
@@ -9,15 +9,17 @@ import {
   IonText,
   IonLoading,
   IonAlert,
-} from '@ionic/react';
-import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+} from "@ionic/react";
+import { useNavigate, Link } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
+
+import logger from "../lib/logger";
 
 const Login: React.FC = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [showAlert, setShowAlert] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -25,13 +27,13 @@ const Login: React.FC = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError("");
 
     const result = await login(email, password);
     if (result.success) {
-      navigate('/app/home');
+      navigate("/app/home");
     } else {
-      setError(result.error || 'Login failed');
+      setError(result.error || "Login failed");
       setShowAlert(true);
     }
     setLoading(false);
@@ -41,7 +43,7 @@ const Login: React.FC = () => {
     <IonPage>
       <IonContent className="ion-padding" fullscreen>
         <div className="ion-text-center ion-margin-bottom">
-          <p className="font-body">Sign in to your Money Tracker account</p>
+          <p className="font-body">Sign in</p>
         </div>
 
         <form onSubmit={handleLogin}>
@@ -50,7 +52,7 @@ const Login: React.FC = () => {
             <IonInput
               type="email"
               value={email}
-              onIonInput={(e) => setEmail(e.detail.value ?? '')}
+              onIonInput={(e) => setEmail(e.detail.value ?? "")}
               required
               placeholder="Enter your email"
             />
@@ -61,7 +63,7 @@ const Login: React.FC = () => {
             <IonInput
               type="password"
               value={password}
-              onIonInput={(e) => setPassword(e.detail.value ?? '')}
+              onIonInput={(e) => setPassword(e.detail.value ?? "")}
               required
               placeholder="Enter your password"
             />
@@ -73,14 +75,13 @@ const Login: React.FC = () => {
             className="ion-margin-top"
             disabled={loading}
           >
-            {loading ? 'Signing In...' : 'Sign In'}
+            {loading ? "Signing In..." : "Sign In"}
           </IonButton>
         </form>
 
         <div className="ion-text-center ion-margin-top">
           <IonText color="medium">
-            Don't have an account?{' '}
-            <Link to="/register">Sign Up</Link>
+            Don't have an account? <Link to="/register">Sign Up</Link>
           </IonText>
         </div>
 
@@ -90,7 +91,7 @@ const Login: React.FC = () => {
           onDidDismiss={() => setShowAlert(false)}
           header="Login Failed"
           message={error}
-          buttons={['OK']}
+          buttons={["OK"]}
         />
       </IonContent>
     </IonPage>

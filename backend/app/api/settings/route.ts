@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser, requireAuth } from '../../../lib/auth';
-import { getUserSettings, updateUserSettings, UserSettings } from '../../../lib/settings';
+import { advanceNextPaycheckDateIfNeeded, updateUserSettings, UserSettings } from '../../../lib/settings';
 
 /**
  * GET /api/settings
@@ -23,8 +23,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // Get user settings
-    const settings = await getUserSettings(user.id);
+    // Get user settings (auto-advance next paycheck date if in the past or today)
+    const settings = await advanceNextPaycheckDateIfNeeded(user.id);
 
     return NextResponse.json(settings);
   } catch (error) {

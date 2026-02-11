@@ -1,6 +1,6 @@
 import { redisOps, redisKeys } from './redis';
 import { RecurringPattern } from './recurring';
-import { UserSettings, getUserSettings } from './settings';
+import { UserSettings, advanceNextPaycheckDateIfNeeded } from './settings';
 
 export interface HealthBreakdown {
   inflows: {
@@ -24,13 +24,6 @@ export interface HealthProjection {
   currentBalance: number;
   /** Next payday from settings, or null if unset (for UI) */
   nextPaycheckDate: string | null;
-}
-
-/**
- * Get user settings for health calculation
- */
-async function getUserSettingsForHealth(userId: string): Promise<UserSettings> {
-  return await getUserSettings(userId);
 }
 
 /** Normalize a date to start-of-day (local time) for date-only comparisons */
@@ -170,8 +163,8 @@ function getProjectionPeriodDays(userSettings: UserSettings): number {
  * projectedBalance = present balance + net flow over the period.
  */
 export async function calculateFinancialHealth(userId: string): Promise<HealthProjection> {
-  // Get user settings
-  const userSettings = await getUserSettingsForHealth(userId);
+  // Get user settings (auto-advance next paycheck date if in the past or today)
+  const userSettings = await advanceNextPaycheckDateIfNeeded(userId);
 
   const projectionDays = getProjectionPeriodDays(userSettings);
 

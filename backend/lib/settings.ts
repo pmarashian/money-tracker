@@ -48,6 +48,29 @@ export async function getUserSettings(userId: string): Promise<UserSettings> {
   }
 }
 
+/** Start-of-day (local) for date-only comparison */
+function startOfDay(d: Date): Date {
+  const out = new Date(d);
+  out.setHours(0, 0, 0, 0);
+  return out;
+}
+
+/**
+ * If nextPaycheckDate is set and <= today, advance it by 14 days and save. Returns settings (possibly updated).
+ */
+export async function advanceNextPaycheckDateIfNeeded(userId: string): Promise<UserSettings> {
+  const settings = await getUserSettings(userId);
+  if (!settings.nextPaycheckDate) return settings;
+
+  const payDate = startOfDay(new Date(settings.nextPaycheckDate));
+  const now = startOfDay(new Date());
+  if (payDate.getTime() > now.getTime()) return settings;
+
+  const nextDate = new Date(payDate.getTime() + 14 * 24 * 60 * 60 * 1000);
+  const newDateStr = nextDate.toISOString().split('T')[0];
+  return updateUserSettings(userId, { nextPaycheckDate: newDateStr });
+}
+
 /**
  * Update user settings in Redis (partial updates supported)
  */
