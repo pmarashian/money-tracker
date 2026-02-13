@@ -15,6 +15,8 @@ import {
   IonSpinner,
   IonText,
   IonToast,
+  IonSelect,
+  IonSelectOption,
 } from '@ionic/react';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -27,7 +29,26 @@ interface UserSettings {
   nextBonusDate: string;
   bonusAmount?: number;
   nextPaycheckDate?: string;
+  timezone?: string;
 }
+
+/** Curated IANA timezones for payday and projection calculations */
+const TIMEZONE_OPTIONS: { value: string; label: string }[] = [
+  { value: '', label: 'Use server time' },
+  { value: 'America/New_York', label: 'Eastern (America/New_York)' },
+  { value: 'America/Chicago', label: 'Central (America/Chicago)' },
+  { value: 'America/Denver', label: 'Mountain (America/Denver)' },
+  { value: 'America/Phoenix', label: 'Arizona (America/Phoenix)' },
+  { value: 'America/Los_Angeles', label: 'Pacific (America/Los_Angeles)' },
+  { value: 'America/Anchorage', label: 'Alaska (America/Anchorage)' },
+  { value: 'Pacific/Honolulu', label: 'Hawaii (Pacific/Honolulu)' },
+  { value: 'UTC', label: 'UTC' },
+  { value: 'Europe/London', label: 'Europe/London' },
+  { value: 'Europe/Paris', label: 'Europe/Paris' },
+  { value: 'Europe/Berlin', label: 'Europe/Berlin' },
+  { value: 'Asia/Tokyo', label: 'Asia/Tokyo' },
+  { value: 'Australia/Sydney', label: 'Australia/Sydney' },
+];
 
 const DEFAULT_SETTINGS: UserSettings = {
   balance: 0,
@@ -89,6 +110,7 @@ const Settings: React.FC = () => {
         nextBonusDate: formattedDate || DEFAULT_SETTINGS.nextBonusDate,
         nextPaycheckDate: nextPaycheckFormatted || undefined,
         balance: typeof data.balance === 'number' && !isNaN(data.balance) ? data.balance : DEFAULT_SETTINGS.balance,
+        timezone: typeof data.timezone === 'string' ? data.timezone : undefined,
       });
     } else if (!result.ok) {
       showToast(result.error || 'Failed to load settings', 'danger');
@@ -112,7 +134,10 @@ const Settings: React.FC = () => {
     if (settings.nextPaycheckDate) {
       payload.nextPaycheckDate = settings.nextPaycheckDate;
     }
-    const result = await apiPatch<UserSettings & { nextPaycheckDate?: string }>('/api/settings', payload);
+    if (settings.timezone !== undefined) {
+      payload.timezone = settings.timezone && settings.timezone.trim() ? settings.timezone.trim() : '';
+    }
+    const result = await apiPatch<UserSettings & { nextPaycheckDate?: string; timezone?: string }>('/api/settings', payload);
     if (result.ok && result.data) {
       const updated = result.data;
       const formattedDate = updated.nextBonusDate ? updated.nextBonusDate.split('T')[0] : '';
@@ -122,6 +147,7 @@ const Settings: React.FC = () => {
         ...updated,
         nextBonusDate: formattedDate,
         nextPaycheckDate: nextPaycheckFormatted || undefined,
+        timezone: typeof updated.timezone === 'string' ? updated.timezone : undefined,
       });
       showToast('Settings saved successfully', 'success');
     } else {
@@ -380,6 +406,24 @@ const Settings: React.FC = () => {
               <IonCardContent>
                 <span className="settings-form-group__label">Balance &amp; income</span>
                 <div className="settings-form-group">
+                  <IonItem>
+                    <IonLabel position="stacked" className="font-body">
+                      Timezone (for payday and projections)
+                    </IonLabel>
+                    <IonSelect
+                      value={settings.timezone ?? ''}
+                      placeholder="Use server time"
+                      onIonChange={(e) => handleInputChange('timezone', e.detail.value ?? '')}
+                      interface="popover"
+                      className="font-body"
+                    >
+                      {TIMEZONE_OPTIONS.map((opt) => (
+                        <IonSelectOption key={opt.value || 'server'} value={opt.value}>
+                          {opt.label}
+                        </IonSelectOption>
+                      ))}
+                    </IonSelect>
+                  </IonItem>
                   <IonItem>
                     <IonLabel position="stacked" className="font-body">
                       Current balance ($)

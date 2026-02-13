@@ -9,6 +9,7 @@ export interface UserSettings {
   nextBonusDate: string; // ISO date string
   bonusAmount?: number; // Optional bonus amount
   nextPaycheckDate?: string; // Optional ISO date string for next payday (used by health projection)
+  timezone?: string; // IANA timezone for "today" in payday and health calculations
 }
 
 /**
@@ -41,6 +42,7 @@ export async function getUserSettings(userId: string): Promise<UserSettings> {
       nextBonusDate: typeof settings.nextBonusDate === 'string' ? settings.nextBonusDate : DEFAULT_USER_SETTINGS.nextBonusDate,
       ...(typeof settings.bonusAmount === 'number' ? { bonusAmount: settings.bonusAmount } : {}),
       nextPaycheckDate: typeof settings.nextPaycheckDate === 'string' ? settings.nextPaycheckDate : undefined,
+      ...(typeof settings.timezone === 'string' && settings.timezone.length > 0 ? { timezone: settings.timezone } : {}),
     };
   } catch (error) {
     console.error('Error parsing user settings:', error);
@@ -56,16 +58,40 @@ function startOfDay(d: Date): Date {
 }
 
 /**
- * If nextPaycheckDate is set and <= today, advance it by 14 days and save. Returns settings (possibly updated).
+ * Return "today" as YYYY-MM-DD in the given timezone, or server UTC date if timezone is missing/invalid.
+ */
+export function getTodayInUserTz(timezone?: string): string {
+  if (timezone && timezone.trim()) {
+    try {
+      const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: timezone.trim(),
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      });
+      return formatter.format(new Date()); // en-CA gives YYYY-MM-DD
+    } catch {
+      // Invalid IANA timezone; fall through to server date
+    }
+  }
+  const d = new Date();
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/**
+ * If nextPaycheckDate is set and <= today (in user timezone), advance it by 14 days and save. Returns settings (possibly updated).
  */
 export async function advanceNextPaycheckDateIfNeeded(userId: string): Promise<UserSettings> {
   const settings = await getUserSettings(userId);
   if (!settings.nextPaycheckDate) return settings;
 
-  const payDate = startOfDay(new Date(settings.nextPaycheckDate));
-  const now = startOfDay(new Date());
-  if (payDate.getTime() > now.getTime()) return settings;
+  const todayStr = getTodayInUserTz(settings.timezone);
+  if (settings.nextPaycheckDate > todayStr) return settings;
 
+  const payDate = new Date(settings.nextPaycheckDate + 'T00:00:00.000Z');
   const nextDate = new Date(payDate.getTime() + 14 * 24 * 60 * 60 * 1000);
   const newDateStr = nextDate.toISOString().split('T')[0];
   return updateUserSettings(userId, { nextPaycheckDate: newDateStr });
@@ -85,6 +111,11 @@ export async function updateUserSettings(userId: string, updates: Partial<UserSe
   };
   if (typeof updates.balance === 'number' && !isNaN(updates.balance)) {
     newSettings.balance = updates.balance;
+  }
+  if ('timezone' in updates) {
+    newSettings.timezone = typeof updates.timezone === 'string' && updates.timezone.trim().length > 0
+      ? updates.timezone.trim()
+      : undefined;
   }
 
   // Validate the updated settings

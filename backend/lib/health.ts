@@ -1,6 +1,6 @@
 import { redisOps, redisKeys } from './redis';
 import { RecurringPattern } from './recurring';
-import { UserSettings, advanceNextPaycheckDateIfNeeded } from './settings';
+import { UserSettings, advanceNextPaycheckDateIfNeeded, getTodayInUserTz } from './settings';
 
 export interface HealthBreakdown {
   inflows: {
@@ -26,21 +26,20 @@ export interface HealthProjection {
   nextPaycheckDate: string | null;
 }
 
-/** Normalize a date to start-of-day (local time) for date-only comparisons */
-function startOfDay(d: Date): Date {
-  const out = new Date(d);
-  out.setHours(0, 0, 0, 0);
-  return out;
+/** Parse YYYY-MM-DD as UTC midnight for consistent date-only comparisons */
+function parseDateOnlyUtc(dateStr: string): Date {
+  return new Date(dateStr + 'T00:00:00.000Z');
 }
 
 /**
  * Calculate projected inflows from user settings
  * Includes bi-weekly paychecks and one bonus on next bonus date
+ * @param nowUtcMidnight - "Today" as UTC midnight (from user timezone calendar date)
  */
-function calculateInflows(userSettings: UserSettings, projectionDays: number = 90): { paycheck: number; bonus: number } {
-  const now = startOfDay(new Date());
+function calculateInflows(userSettings: UserSettings, projectionDays: number, nowUtcMidnight: Date): { paycheck: number; bonus: number } {
+  const now = nowUtcMidnight;
   const endDate = new Date(now.getTime() + projectionDays * 24 * 60 * 60 * 1000);
-  const nextBonusDate = startOfDay(new Date(userSettings.nextBonusDate));
+  const nextBonusDate = parseDateOnlyUtc(userSettings.nextBonusDate);
 
   // Assume bi-weekly paychecks (14 days) - could be made configurable later
   const paycheckIntervalDays = 14;
@@ -48,7 +47,7 @@ function calculateInflows(userSettings: UserSettings, projectionDays: number = 9
 
   const firstPaycheckFromNow = new Date(now.getTime() + paycheckIntervalDays * 24 * 60 * 60 * 1000);
   const nextPaycheckDate = userSettings.nextPaycheckDate
-    ? startOfDay(new Date(userSettings.nextPaycheckDate))
+    ? parseDateOnlyUtc(userSettings.nextPaycheckDate)
     : firstPaycheckFromNow;
   const firstPaycheck = nextPaycheckDate.getTime() <= now.getTime() ? firstPaycheckFromNow : nextPaycheckDate;
 
@@ -80,17 +79,24 @@ function getLastDayOfMonth(year: number, month: number): number {
 
 /**
  * Count how many times a monthly expense (on typicalDayOfMonth) falls in [now, endDate].
+ * Uses UTC for calendar math so it matches now/endDate (UTC midnight).
  */
 function countMonthlyOccurrences(now: Date, endDate: Date, typicalDayOfMonth: number): number {
   const day = Math.min(typicalDayOfMonth, 31);
   let count = 0;
-  const cursor = new Date(now.getFullYear(), now.getMonth(), 1);
-  while (cursor <= endDate) {
-    const lastDay = getLastDayOfMonth(cursor.getFullYear(), cursor.getMonth() + 1);
+  let y = now.getUTCFullYear();
+  let m = now.getUTCMonth();
+  while (true) {
+    const lastDay = getLastDayOfMonth(y, m + 1);
     const occurrenceDay = Math.min(day, lastDay);
-    const occurrence = new Date(cursor.getFullYear(), cursor.getMonth(), occurrenceDay);
-    if (occurrence >= now && occurrence <= endDate) count += 1;
-    cursor.setMonth(cursor.getMonth() + 1);
+    const occurrence = new Date(Date.UTC(y, m, occurrenceDay));
+    if (occurrence > endDate) break;
+    if (occurrence >= now) count += 1;
+    m += 1;
+    if (m > 11) {
+      m = 0;
+      y += 1;
+    }
   }
   return count;
 }
@@ -98,9 +104,10 @@ function countMonthlyOccurrences(now: Date, endDate: Date, typicalDayOfMonth: nu
 /**
  * Calculate projected outflows from recurring expenses
  * Counts only occurrences that fall within [now, endDate] (position-in-month aware).
+ * @param nowUtcMidnight - "Today" as UTC midnight (from user timezone calendar date)
  */
-function calculateOutflows(recurringPatterns: RecurringPattern[], projectionDays: number = 90): number {
-  const now = startOfDay(new Date());
+function calculateOutflows(recurringPatterns: RecurringPattern[], projectionDays: number, nowUtcMidnight: Date): number {
+  const now = nowUtcMidnight;
   const endDate = new Date(now.getTime() + projectionDays * 24 * 60 * 60 * 1000);
 
   let totalOutflows = 0;
@@ -146,11 +153,12 @@ const FALLBACK_PROJECTION_DAYS = 90;
 /**
  * Compute projection period in days: from today to next bonus date (inclusive).
  * If nextBonusDate is missing or in the past, use a fixed fallback period.
+ * @param nowUtcMidnight - "Today" as UTC midnight (from user timezone calendar date)
  */
-function getProjectionPeriodDays(userSettings: UserSettings): number {
+function getProjectionPeriodDays(userSettings: UserSettings, nowUtcMidnight: Date): number {
   if (!userSettings.nextBonusDate) return FALLBACK_PROJECTION_DAYS;
-  const now = startOfDay(new Date());
-  const nextBonusDate = startOfDay(new Date(userSettings.nextBonusDate));
+  const now = nowUtcMidnight;
+  const nextBonusDate = parseDateOnlyUtc(userSettings.nextBonusDate);
   if (nextBonusDate < now) return FALLBACK_PROJECTION_DAYS;
   const ms = nextBonusDate.getTime() - now.getTime();
   const days = Math.ceil(ms / (24 * 60 * 60 * 1000));
@@ -163,10 +171,13 @@ function getProjectionPeriodDays(userSettings: UserSettings): number {
  * projectedBalance = present balance + net flow over the period.
  */
 export async function calculateFinancialHealth(userId: string): Promise<HealthProjection> {
-  // Get user settings (auto-advance next paycheck date if in the past or today)
+  // Get user settings (auto-advance next paycheck date if in the past or today in user timezone)
   const userSettings = await advanceNextPaycheckDateIfNeeded(userId);
 
-  const projectionDays = getProjectionPeriodDays(userSettings);
+  const todayStr = getTodayInUserTz(userSettings.timezone);
+  const nowUtcMidnight = parseDateOnlyUtc(todayStr);
+
+  const projectionDays = getProjectionPeriodDays(userSettings, nowUtcMidnight);
 
   // Get recurring patterns
   const recurringKey = redisKeys.recurring(userId);
@@ -181,10 +192,10 @@ export async function calculateFinancialHealth(userId: string): Promise<HealthPr
   }
 
   // Calculate inflows from user settings
-  const inflows = calculateInflows(userSettings, projectionDays);
+  const inflows = calculateInflows(userSettings, projectionDays, nowUtcMidnight);
 
   // Calculate outflows
-  const outflows = calculateOutflows(recurringPatterns, projectionDays);
+  const outflows = calculateOutflows(recurringPatterns, projectionDays, nowUtcMidnight);
 
   // Net flow over the period; projected balance = present balance + net flow
   const totalInflows = inflows.paycheck + inflows.bonus;
