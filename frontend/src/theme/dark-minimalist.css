@@ -578,3 +578,9 @@ a:hover, ion-router-link:hover {
   min-height: 48px;
   font-size: 1rem;
 }
+
+/* Timezone select popover: wide enough to read full labels on mobile */
+ion-popover.timezone-select-popover {
+  --width: min(90vw, 360px);
+  --min-width: 280px;
+}

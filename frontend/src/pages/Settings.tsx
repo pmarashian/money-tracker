@@ -34,7 +34,7 @@ interface UserSettings {
 
 /** Curated IANA timezones for payday and projection calculations */
 const TIMEZONE_OPTIONS: { value: string; label: string }[] = [
-  { value: '', label: 'Use server time' },
+  { value: '', label: 'Default' },
   { value: 'America/New_York', label: 'Eastern (America/New_York)' },
   { value: 'America/Chicago', label: 'Central (America/Chicago)' },
   { value: 'America/Denver', label: 'Mountain (America/Denver)' },
@@ -408,17 +408,18 @@ const Settings: React.FC = () => {
                 <div className="settings-form-group">
                   <IonItem>
                     <IonLabel position="stacked" className="font-body">
-                      Timezone (for payday and projections)
+                      Your timezone (for payday and projections)
                     </IonLabel>
                     <IonSelect
                       value={settings.timezone ?? ''}
-                      placeholder="Use server time"
+                      placeholder="Default"
                       onIonChange={(e) => handleInputChange('timezone', e.detail.value ?? '')}
                       interface="popover"
+                      interfaceOptions={{ cssClass: 'timezone-select-popover' }}
                       className="font-body"
                     >
                       {TIMEZONE_OPTIONS.map((opt) => (
-                        <IonSelectOption key={opt.value || 'server'} value={opt.value}>
+                        <IonSelectOption key={opt.value || 'default'} value={opt.value}>
                           {opt.label}
                         </IonSelectOption>
                       ))}

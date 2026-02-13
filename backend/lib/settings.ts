@@ -59,6 +59,7 @@ function startOfDay(d: Date): Date {
 
 /**
  * Return "today" as YYYY-MM-DD in the given timezone, or server UTC date if timezone is missing/invalid.
+ * Uses formatToParts for reliable YYYY-MM-DD regardless of locale formatting.
  */
 export function getTodayInUserTz(timezone?: string): string {
   if (timezone && timezone.trim()) {
@@ -69,10 +70,20 @@ export function getTodayInUserTz(timezone?: string): string {
         month: '2-digit',
         day: '2-digit',
       });
-      return formatter.format(new Date()); // en-CA gives YYYY-MM-DD
+      const parts = formatter.formatToParts(new Date());
+      const year = parts.find((p) => p.type === 'year')?.value;
+      const month = parts.find((p) => p.type === 'month')?.value;
+      const day = parts.find((p) => p.type === 'day')?.value;
+      if (year && month && day) {
+        return `${year}-${month}-${day}`;
+      }
+      console.warn('[settings] getTodayInUserTz: formatToParts missing year/month/day, using UTC:', timezone.trim());
     } catch {
       // Invalid IANA timezone; fall through to server date
     }
+    console.warn('[settings] getTodayInUserTz: invalid or unsupported timezone, using UTC:', timezone?.trim());
+  } else {
+    console.warn('[settings] getTodayInUserTz: no timezone set, using UTC for "today"');
   }
   const d = new Date();
   const y = d.getUTCFullYear();
