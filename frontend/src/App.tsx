@@ -20,6 +20,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import ProtectedRoute from './components/ProtectedRoute';
+import LoadingSpinner from './components/LoadingSpinner';
 import logger from './lib/logger';
 
 const InitialRoute: React.FC = () => {
@@ -27,7 +28,7 @@ const InitialRoute: React.FC = () => {
 
   // Wait for auth check to complete before redirecting
   if (loading) {
-    return <div>Loading...</div>;
+    return <LoadingSpinner />;
   }
 
   // Redirect based on authentication state
