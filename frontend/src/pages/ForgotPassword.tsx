@@ -92,6 +92,8 @@ const ForgotPassword: React.FC = () => {
 
               <div className="ion-text-center ion-margin-top">
                 <IonText color="medium">
+                  <Link to="/reset-password">Already have a code?</Link>
+                  {" · "}
                   <Link to="/login">Back to Sign In</Link>
                 </IonText>
               </div>

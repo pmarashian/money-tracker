@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { getRedisClient, redisKeys, redisOps } from "@/lib/redis";
 import { setCorsHeaders } from "@/lib/cors";
+import { getResetPasswordEmailContent } from "@/lib/email-templates/reset-password";
 import { Resend } from "resend";
 
 const GENERIC_MESSAGE =
@@ -106,12 +107,14 @@ export async function POST(request: NextRequest) {
 
       if (resendKey) {
         try {
+          const { html, text } = getResetPasswordEmailContent({ resetUrl, code });
           const resend = new Resend(resendKey);
           await resend.emails.send({
             from,
             to: email,
-            subject: "Reset your password",
-            html: `Click the link below to reset your password.<br><br><a href="${resetUrl}">Reset password</a><br><br>Or go to the reset page and enter this code with your email: <strong>${code}</strong>. Code and link expire in 1 hour.`,
+            subject: "Reset your Money Tracker password",
+            html,
+            text,
           });
         } catch (err) {
           console.error("Resend send error:", err);

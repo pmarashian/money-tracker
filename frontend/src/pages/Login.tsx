@@ -104,6 +104,10 @@ const Login: React.FC = () => {
             <IonText color="medium">
               <Link to="/forgot-password">Forgot password?</Link>
             </IonText>
+            <br />
+            <IonText color="medium">
+              <Link to="/reset-password">Already have a reset code?</Link>
+            </IonText>
           </div>
         </form>
 
