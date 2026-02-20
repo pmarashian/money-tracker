@@ -99,6 +99,12 @@ const Login: React.FC = () => {
           >
             {loading ? "Signing In..." : "Sign In"}
           </IonButton>
+
+          <div className="ion-text-center ion-margin-top">
+            <IonText color="medium">
+              <Link to="/forgot-password">Forgot password?</Link>
+            </IonText>
+          </div>
         </form>
 
           <div className="ion-text-center ion-margin-top">

@@ -7,6 +7,7 @@ import {
   IonLabel
 } from '@ionic/react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { App as CapacitorApp } from '@capacitor/app';
 
 import {
   home,
@@ -18,6 +19,8 @@ import Expenses from './pages/Expenses';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoadingSpinner from './components/LoadingSpinner';
@@ -93,6 +96,8 @@ const AppContent: React.FC = () => {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/" element={<InitialRoute />} />
       <Route path="/app/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
       <Route path="/app/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
@@ -155,6 +160,49 @@ const App: React.FC = () => {
   );
 };
 
+function parseResetPasswordUrl(urlString: string): string | null {
+  try {
+    const url = new URL(urlString);
+    const pathPart = (url.hostname || url.pathname || '').toLowerCase();
+    const token = url.searchParams.get('token');
+    if (pathPart.includes('reset-password') && token) {
+      return token;
+    }
+  } catch {
+    // ignore invalid URLs
+  }
+  return null;
+}
+
+const DeepLinkHandler: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const handleUrl = (url: string) => {
+      const token = parseResetPasswordUrl(url);
+      if (token) {
+        navigate(`/reset-password?token=${encodeURIComponent(token)}`, { replace: true });
+      }
+    };
+
+    const listener = CapacitorApp.addListener('appUrlOpen', (event) => {
+      handleUrl(event.url);
+    });
+
+    CapacitorApp.getLaunchUrl().then((result) => {
+      if (result?.url) {
+        handleUrl(result.url);
+      }
+    }).catch(() => {});
+
+    return () => {
+      listener.then((l) => l.remove()).catch(() => {});
+    };
+  }, [navigate]);
+
+  return <>{children}</>;
+};
+
 const RouterWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   useEffect(() => {
     logger.info('[App] Router initialized');
@@ -164,7 +212,13 @@ const RouterWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     };
   }, []);
 
-  return <Router>{children}</Router>;
+  return (
+    <Router>
+      <DeepLinkHandler>
+        {children}
+      </DeepLinkHandler>
+    </Router>
+  );
 };
 
 export default App;

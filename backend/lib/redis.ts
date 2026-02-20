@@ -56,6 +56,10 @@ export const redisKeys = {
 
   // Chat keys
   chat: (userId: string) => `mt:chat:${userId}`,
+
+  // Password reset tokens (TTL 1h)
+  resetToken: (token: string) => `mt:reset:${token}`,
+  resetCode: (code: string) => `mt:reset:code:${code}`,
 };
 
 /**
