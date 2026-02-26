@@ -18,7 +18,7 @@ class ApiClient {
 
   private async makeRequest<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
   ): Promise<ApiResponse<T>> {
     const path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
     const url = `${this.baseUrl}${path}`;
@@ -39,7 +39,7 @@ class ApiClient {
       hasToken: !!token,
       tokenLength: token?.length ?? 0,
     });
-    
+
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
     }
@@ -59,19 +59,25 @@ class ApiClient {
 
       // Clear token on 401 if we sent a token (meaning it's invalid)
       if (response.status === 401 && token) {
-        await logger.warn("[API] 401 Unauthorized response - token invalid, clearing", {
-          endpoint,
-          method: options.method || "GET",
-          hadToken: true,
-          tokenLength: token.length,
-        });
+        await logger.warn(
+          "[API] 401 Unauthorized response - token invalid, clearing",
+          {
+            endpoint,
+            method: options.method || "GET",
+            hadToken: true,
+            tokenLength: token.length,
+          },
+        );
         await clearAuthToken();
       } else if (response.status === 401 && !token) {
-        await logger.info("[API] 401 Unauthorized response - no token was sent", {
-          endpoint,
-          method: options.method || "GET",
-          hadToken: false,
-        });
+        await logger.info(
+          "[API] 401 Unauthorized response - no token was sent",
+          {
+            endpoint,
+            method: options.method || "GET",
+            hadToken: false,
+          },
+        );
       }
 
       const text = await response.text();
@@ -90,7 +96,7 @@ class ApiClient {
           result.error =
             typeof parsed?.error === "string"
               ? parsed.error
-              : parsed?.message ?? "Request failed";
+              : (parsed?.message ?? "Request failed");
         }
       } catch {
         if (response.ok) result.data = text as unknown as T;
@@ -98,14 +104,14 @@ class ApiClient {
           result.error =
             text || `Request failed with status ${response.status}`;
       }
-      await logger.info("[API] Request completed", {
-        endpoint,
-        method: options.method || "GET",
-        status: result.status,
-        ok: result.ok,
-        hasError: !!result.error,
-      });
-      
+      // await logger.info("[API] Request completed", {
+      //   endpoint,
+      //   method: options.method || "GET",
+      //   status: result.status,
+      //   ok: result.ok,
+      //   hasError: !!result.error,
+      // });
+
       return result;
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Network error";
@@ -118,7 +124,7 @@ class ApiClient {
         hadToken: !!token,
         tokenLength: token?.length ?? 0,
       });
-      
+
       return {
         ok: false,
         status: 0,
@@ -133,7 +139,7 @@ class ApiClient {
 
   async post<T = unknown>(
     endpoint: string,
-    data?: unknown
+    data?: unknown,
   ): Promise<ApiResponse<T>> {
     return this.makeRequest<T>(endpoint, {
       method: "POST",
@@ -143,7 +149,7 @@ class ApiClient {
 
   async patch<T = unknown>(
     endpoint: string,
-    data?: unknown
+    data?: unknown,
   ): Promise<ApiResponse<T>> {
     return this.makeRequest<T>(endpoint, {
       method: "PATCH",
@@ -157,7 +163,7 @@ class ApiClient {
 
   async request<T = unknown>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
   ): Promise<ApiResponse<T>> {
     return this.makeRequest<T>(endpoint, options);
   }
@@ -175,5 +181,5 @@ export const apiDelete = <T = unknown>(endpoint: string) =>
   apiClient.delete<T>(endpoint);
 export const apiRequest = <T = unknown>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
 ) => apiClient.request<T>(endpoint, options);
