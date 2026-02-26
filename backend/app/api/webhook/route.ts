@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getLogtail } from "@/lib/logtail";
 
 export async function GET() {
+  await getLogtail().info("Webhook test", { payload: "test" });
+
   return NextResponse.json({
     success: true,
   });
@@ -10,14 +12,19 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    console.log("Webhook received:", body);
-    await getLogtail().info("Webhook received", { payload: body });
+    console.log("Webhook received:", JSON.stringify(body));
+    await getLogtail().info("Webhook received", {
+      payload: JSON.stringify(body),
+    });
 
     return NextResponse.json({
       success: true,
     });
   } catch (error: any) {
     console.log("Error:", error.message);
+    await getLogtail().error("Webhook error", {
+      error: error.message,
+    });
   }
 
   return NextResponse.json({
