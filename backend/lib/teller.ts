@@ -100,10 +100,8 @@ function getTellerAgent(): Agent {
  */
 async function tellerFetch(url: string, init: RequestInit): Promise<Response> {
   const dispatcher = getTellerAgent();
-  return undiciFetch(url, {
-    ...init,
-    dispatcher,
-  }) as Promise<Response>;
+  const options = { ...init, dispatcher } as Parameters<typeof undiciFetch>[1];
+  return undiciFetch(url, options) as unknown as Promise<Response>;
 }
 
 export interface TellerEnrollment {
