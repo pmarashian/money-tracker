@@ -102,10 +102,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(null);
     } finally {
       setLoading(false);
-      await logger.info("[Auth] checkAuth completed", {
-        userAuthenticated: !!user,
-        loading: false,
-      });
+      // await logger.info("[Auth] checkAuth completed", {
+      //   userAuthenticated: !!user,
+      //   loading: false,
+      // });
     }
   };
 
@@ -113,9 +113,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     email: string,
     password: string,
   ): Promise<{ success: boolean; error?: string }> => {
-    await logger.info("[Auth] Login attempt initiated", {
-      email,
-    });
+    // await logger.info("[Auth] Login attempt initiated", {
+    //   email,
+    // });
 
     try {
       const result = await apiPost<{ token?: string; user?: User }>(
@@ -124,23 +124,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       );
 
       if (result.ok && result.data?.token) {
-        await logger.info("[Auth] Login successful - saving token", {
-          email,
-          tokenLength: result.data.token.length,
-          hasUser: !!result.data.user,
-        });
+        // await logger.info("[Auth] Login successful - saving token", {
+        //   email,
+        //   tokenLength: result.data.token.length,
+        //   hasUser: !!result.data.user,
+        // });
 
         // Save token to storage
         await setAuthToken(result.data.token);
-        await logger.info("[Auth] Token saved successfully");
+        // await logger.info("[Auth] Token saved successfully");
 
         // Set user from login response
         if (result.data.user) {
           setUser(result.data.user);
-          await logger.info("[Auth] User state updated", {
-            userId: result.data.user.id,
-            email: result.data.user.email,
-          });
+          // await logger.info("[Auth] User state updated", {
+          //   userId: result.data.user.id,
+          //   email: result.data.user.email,
+          // });
         }
 
         setLoading(false);
@@ -172,14 +172,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = async () => {
-    await logger.info("[Auth] Logout initiated", {
-      userId: user?.id,
-      email: user?.email,
-    });
+    // await logger.info("[Auth] Logout initiated", {
+    //   userId: user?.id,
+    //   email: user?.email,
+    // });
 
     try {
       await apiPost("/api/auth/logout");
-      await logger.info("[Auth] Logout API call successful");
+      // await logger.info("[Auth] Logout API call successful");
     } catch (error: any) {
       await logger.error("[Auth] Logout API call failed", {
         error: error.message,
@@ -187,12 +187,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         errorName: error.name,
       });
     } finally {
-      await logger.info("[Auth] Clearing token and user state");
+      // await logger.info("[Auth] Clearing token and user state");
       await clearAuthToken();
       setUser(null);
-      await logger.info(
-        "[Auth] Logout completed - token cleared, user state reset",
-      );
+      // await logger.info(
+      //   "[Auth] Logout completed - token cleared, user state reset",
+      // );
     }
   };
 

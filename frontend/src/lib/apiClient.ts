@@ -33,12 +33,12 @@ class ApiClient {
 
     // Get token from storage (async)
     const token = await getAuthToken();
-    await logger.info("[API] Making request", {
-      endpoint,
-      method: options.method || "GET",
-      hasToken: !!token,
-      tokenLength: token?.length ?? 0,
-    });
+    // await logger.info("[API] Making request", {
+    //   endpoint,
+    //   method: options.method || "GET",
+    //   hasToken: !!token,
+    //   tokenLength: token?.length ?? 0,
+    // });
 
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
