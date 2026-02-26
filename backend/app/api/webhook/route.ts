@@ -12,8 +12,9 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    console.log("Webhook received:", JSON.stringify(body));
+
     await getLogtail().info("Webhook received", {
+      service: "[webhook]",
       payload: JSON.stringify(body),
     });
 
