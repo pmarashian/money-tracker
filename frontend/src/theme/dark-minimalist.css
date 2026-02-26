@@ -441,16 +441,6 @@ a:hover, ion-router-link:hover {
   background: var(--ion-color-step-400);
 }
 
-/* Data Import section - neutral gray-blue accent */
-.settings-section-card--data {
-  border-color: var(--ion-color-step-400) !important;
-  background: var(--ion-color-step-50) !important;
-}
-
-.settings-section-card--data::before {
-  background: var(--ion-color-step-500);
-}
-
 /* Financial Settings section - lighter accent */
 .settings-section-card--financial {
   border-color: var(--ion-color-step-500) !important;
@@ -489,67 +479,12 @@ a:hover, ion-router-link:hover {
   background: var(--ion-color-step-600);
 }
 
-.settings-section-card--data .settings-section-header::after {
-  background: var(--ion-color-step-500);
-}
-
 .settings-section-card--financial .settings-section-header::after {
   background: var(--ion-color-step-600);
 }
 
 .settings-section-card--account .settings-section-header::after {
   background: var(--ion-color-step-400);
-}
-
-.settings-upload-zone {
-  position: relative;
-  display: block;
-  border: 2px dashed var(--ion-color-step-400);
-  background: var(--ion-color-step-50);
-  padding: 1.25rem;
-  text-align: center;
-  cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
-  font-family: var(--font-body);
-  font-size: 1rem;
-  color: var(--ion-color-step-600);
-}
-
-.settings-upload-zone:hover,
-.settings-upload-zone:focus-within {
-  border-color: var(--ion-color-step-300);
-  background: var(--ion-color-step-100);
-}
-
-.settings-upload-zone.settings-upload-zone--dragover {
-  border-color: var(--ion-color-step-200);
-  background: var(--ion-color-step-150);
-}
-
-.settings-upload-zone input[type="file"] {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  overflow: hidden;
-  cursor: pointer;
-}
-
-.settings-upload-result {
-  margin-top: 0.75rem;
-  padding: 0.5rem 0;
-  font-family: var(--font-body);
-  font-size: 0.95rem;
-  color: var(--ion-color-step-700);
-  border-top: 1px solid var(--ion-color-step-200);
-}
-
-.settings-upload-error {
-  margin-top: 0.5rem;
-  font-family: var(--font-body);
-  font-size: 0.95rem;
-  color: var(--ion-color-danger);
 }
 
 .settings-form-group {

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser, requireAuth } from '../../../lib/auth';
 import { advanceNextPaycheckDateIfNeeded, updateUserSettings, UserSettings } from '../../../lib/settings';
+import { getEnrollment } from '../../../lib/teller';
 
 /**
  * GET /api/settings
- * Returns current user settings for form pre-fill
+ * Returns current user settings for form pre-fill and optional Teller linked-bank info.
  */
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
@@ -25,8 +26,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     // Get user settings (auto-advance next paycheck date if in the past or today)
     const settings = await advanceNextPaycheckDateIfNeeded(user.id);
+    const enrollment = await getEnrollment(user.id);
 
-    return NextResponse.json(settings);
+    const response: Record<string, unknown> = { ...settings };
+    response.teller = enrollment
+      ? { linked: true, institutionName: enrollment.institutionName ?? null, linkedAt: enrollment.linkedAt }
+      : { linked: false, institutionName: null, linkedAt: null };
+
+    return NextResponse.json(response);
   } catch (error) {
     console.error('GET /api/settings error:', error);
     return NextResponse.json(

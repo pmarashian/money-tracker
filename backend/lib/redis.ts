@@ -60,6 +60,9 @@ export const redisKeys = {
   // Password reset tokens (TTL 1h)
   resetToken: (token: string) => `mt:reset:${token}`,
   resetCode: (code: string) => `mt:reset:code:${code}`,
+
+  // Teller bank connection (enrollment + access token per user)
+  tellerEnrollment: (userId: string) => `mt:teller:enrollment:${userId}`,
 };
 
 /**
