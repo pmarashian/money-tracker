@@ -136,11 +136,11 @@ export async function getAuthToken(): Promise<string | null> {
 export async function setAuthToken(token: string): Promise<void> {
   const platform = Capacitor.isNativePlatform() ? "native" : "web";
   const platformName = Capacitor.getPlatform();
-  await logger.info("[AuthStorage] setAuthToken called", {
-    platform,
-    platformName,
-    tokenLength: token.length,
-  });
+  // await logger.info("[AuthStorage] setAuthToken called", {
+  //   platform,
+  //   platformName,
+  //   tokenLength: token.length,
+  // });
 
   try {
     // Try Preferences first if on native platform
@@ -150,15 +150,15 @@ export async function setAuthToken(token: string): Promise<void> {
       if (preferencesAvailable) {
         try {
           await Preferences.set({ key: STORAGE_KEY, value: token });
-          await logger.info(
-            "[AuthStorage] Token saved successfully to Preferences",
-            {
-              platform: "native",
-              platformName,
-              storageMethod: "Preferences",
-              tokenLength: token.length,
-            },
-          );
+          // await logger.info(
+          //   "[AuthStorage] Token saved successfully to Preferences",
+          //   {
+          //     platform: "native",
+          //     platformName,
+          //     storageMethod: "Preferences",
+          //     tokenLength: token.length,
+          //   },
+          // );
           return;
         } catch (error: any) {
           // Log detailed error information for diagnostics
@@ -204,18 +204,18 @@ export async function setAuthToken(token: string): Promise<void> {
     }
 
     window.localStorage.setItem(STORAGE_KEY, token);
-    await logger.info(
-      "[AuthStorage] Token saved successfully to localStorage",
-      {
-        platform,
-        platformName,
-        storageMethod: "localStorage",
-        tokenLength: token.length,
-        warning: Capacitor.isNativePlatform()
-          ? "Using localStorage on native platform - tokens may not persist after force-close. Ensure Preferences plugin is properly synced."
-          : undefined,
-      },
-    );
+    // await logger.info(
+    //   "[AuthStorage] Token saved successfully to localStorage",
+    //   {
+    //     platform,
+    //     platformName,
+    //     storageMethod: "localStorage",
+    //     tokenLength: token.length,
+    //     warning: Capacitor.isNativePlatform()
+    //       ? "Using localStorage on native platform - tokens may not persist after force-close. Ensure Preferences plugin is properly synced."
+    //       : undefined,
+    //   },
+    // );
   } catch (error: any) {
     await logger.error("[AuthStorage] Failed to set token", {
       platform,
@@ -247,14 +247,14 @@ export async function clearAuthToken(): Promise<void> {
       if (preferencesAvailable) {
         try {
           await Preferences.remove({ key: STORAGE_KEY });
-          await logger.info(
-            "[AuthStorage] Token cleared successfully from Preferences",
-            {
-              platform: "native",
-              platformName,
-              storageMethod: "Preferences",
-            },
-          );
+          // await logger.info(
+          //   "[AuthStorage] Token cleared successfully from Preferences",
+          //   {
+          //     platform: "native",
+          //     platformName,
+          //     storageMethod: "Preferences",
+          //   },
+          // );
           return;
         } catch (error: any) {
           // Log detailed error information for diagnostics
@@ -298,13 +298,13 @@ export async function clearAuthToken(): Promise<void> {
     }
 
     window.localStorage.removeItem(STORAGE_KEY);
-    await logger.info(
-      "[AuthStorage] Token cleared successfully from localStorage",
-      {
-        platform,
-        storageMethod: "localStorage",
-      },
-    );
+    // await logger.info(
+    //   "[AuthStorage] Token cleared successfully from localStorage",
+    //   {
+    //     platform,
+    //     storageMethod: "localStorage",
+    //   },
+    // );
   } catch (error: any) {
     await logger.error("[AuthStorage] Failed to clear token", {
       platform,

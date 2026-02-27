@@ -35,38 +35,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   const checkAuth = async () => {
-    await logger.info(
-      "[Auth] checkAuth called - starting authentication check",
-    );
+    // await logger.info(
+    //   "[Auth] checkAuth called - starting authentication check",
+    // );
 
     try {
       const token = await getAuthToken();
-      await logger.info("[Auth] Token retrieved from storage", {
-        tokenPresent: !!token,
-        tokenLength: token?.length ?? 0,
-      });
+      // await logger.info("[Auth] Token retrieved from storage", {
+      //   tokenPresent: !!token,
+      //   tokenLength: token?.length ?? 0,
+      // });
 
       if (!token) {
         // No token - user is not authenticated
-        await logger.info("[Auth] No token found - user not authenticated");
+        // await logger.info("[Auth] No token found - user not authenticated");
         setUser(null);
         setLoading(false);
         return;
       }
 
       // Validate token with backend
-      await logger.info("[Auth] Validating token with backend");
+      // await logger.info("[Auth] Validating token with backend");
       const result = await apiGet<{ user: User }>("/api/auth/session");
 
       if (result.ok && result.data?.user) {
-        await logger.info(
-          "[Auth] Session check successful - user authenticated",
-          {
-            userId: result.data.user.id,
-            email: result.data.user.email,
-            status: result.status,
-          },
-        );
+        // await logger.info(
+        //   "[Auth] Session check successful - user authenticated",
+        //   {
+        //     userId: result.data.user.id,
+        //     email: result.data.user.email,
+        //     status: result.status,
+        //   },
+        // );
         setUser(result.data.user);
       } else {
         await logger.warn("[Auth] Session check failed", {
@@ -78,17 +78,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Only clear token if we're sure it's invalid (401)
         if (result.status === 401) {
           // Token was sent but rejected - clear it
-          await logger.info("[Auth] Token invalid (401) - clearing token");
+          // await logger.info("[Auth] Token invalid (401) - clearing token");
           await clearAuthToken();
           setUser(null);
         } else {
           // Other error - might be network issue, don't clear token
-          await logger.info(
-            "[Auth] Non-401 error - keeping token (may be network issue)",
-            {
-              status: result.status,
-            },
-          );
+          // await logger.info(
+          //   "[Auth] Non-401 error - keeping token (may be network issue)",
+          //   {
+          //     status: result.status,
+          //   },
+          // );
           setUser(null);
         }
       }
@@ -147,13 +147,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return { success: true };
       }
 
-      await logger.warn("[Auth] Login failed", {
-        email,
-        status: result.status,
-        error: result.error,
-        ok: result.ok,
-        hasToken: !!result.data?.token,
-      });
+      // await logger.warn("[Auth] Login failed", {
+      //   email,
+      //   status: result.status,
+      //   error: result.error,
+      //   ok: result.ok,
+      //   hasToken: !!result.data?.token,
+      // });
 
       return { success: false, error: result.error || "Login failed" };
     } catch (error: any) {
@@ -199,10 +199,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const changePassword = async (
     newPassword: string,
   ): Promise<{ success: boolean; error?: string }> => {
-    await logger.info("[Auth] Password change initiated", {
-      userId: user?.id,
-      email: user?.email,
-    });
+    // await logger.info("[Auth] Password change initiated", {
+    //   userId: user?.id,
+    //   email: user?.email,
+    // });
 
     try {
       const result = await apiPost<{ success?: boolean; message?: string }>(
@@ -211,10 +211,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       );
 
       if (result.ok && result.data?.success) {
-        await logger.info("[Auth] Password change successful", {
-          userId: user?.id,
-          email: user?.email,
-        });
+        // await logger.info("[Auth] Password change successful", {
+        //   userId: user?.id,
+        //   email: user?.email,
+        // });
         return { success: true };
       }
 
