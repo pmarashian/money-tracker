@@ -5,7 +5,6 @@ import {
   detectRecurringTransactions,
   storeRecurringPatterns,
   type RecurringPattern,
-  getMonthlyRecurringExpensesForCurrentMonth,
 } from "../../../../lib/recurring";
 
 const FREQUENCIES = ["monthly", "weekly", "biweekly"] as const;
