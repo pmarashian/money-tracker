@@ -31,6 +31,7 @@ interface RecurringPattern {
 const Expenses: React.FC = () => {
   const { user } = useAuth();
   const [recurringExpenses, setRecurringExpenses] = useState<RecurringPattern[]>([]);
+  const [totalMonthlyExpenses, setTotalMonthlyExpenses] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -160,9 +161,10 @@ const Expenses: React.FC = () => {
     const result = await apiDelete<{ recurring: RecurringPattern[] }>(
       `/api/transactions/recurring?index=${index}`
     );
-    if (result.ok && result.data?.recurring) {
-      setRecurringExpenses(result.data.recurring);
-    } else {
+      if (result.ok && result.data?.recurring) {
+        setRecurringExpenses(result.data.recurring);
+        setTotalMonthlyExpenses(result.data.totalMonthly || 0);
+      } else {
       setError(result.error || 'Failed to delete');
     }
   };

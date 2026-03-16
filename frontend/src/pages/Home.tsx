@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   IonContent,
   IonHeader,
@@ -53,6 +53,8 @@ const Home: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
   const [healthData, setHealthData] = useState<HealthData | null>(null);
   const [settings, setSettings] = useState<UserSettings | null>(null);
+  const [totalMonthlyExpenses, setTotalMonthlyExpenses] = useState(0);
+  const [loadingExpenses, setLoadingExpenses] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -74,11 +76,21 @@ const Home: React.FC = () => {
     }
   };
 
+  const fetchTotalExpenses = useCallback(async () => {
+    if (!user) return;
+    setLoadingExpenses(true);
+    const result = await apiGet<{ recurring: any[]; totalMonthly: number }>(`/api/transactions/recurring?t=${Date.now()}`);
+    if (result.ok && result.data) {
+      setTotalMonthlyExpenses(result.data.totalMonthly || 0);
+    }
+    setLoadingExpenses(false);
+  }, [user]);
+
   useEffect(() => {
     if (user && location.pathname === '/app/home') {
       setLoading(true);
       setError(null);
-      Promise.all([fetchHealthData(), fetchSettings()]).finally(() => {
+      Promise.all([fetchHealthData(), fetchSettings(), fetchTotalExpenses()]).finally(() => {
         setLoading(false);
       });
     } else if (!authLoading) {
@@ -186,6 +198,7 @@ const Home: React.FC = () => {
   const hasSettings = settings && settings.paycheckAmount > 0;
   const nextPaycheckDate = getNextPaycheckDate();
   const daysUntilBonus = getDaysUntilBonus();
+  const shouldShowExpensesCard = totalMonthlyExpenses > 0;
 
   return (
     <IonPage>
@@ -217,6 +230,22 @@ const Home: React.FC = () => {
             </IonCard>
           ) : healthData ? (
             <>
+              {/* Total Monthly Expenses Card */}
+              {shouldShowExpensesCard && (
+                <IonCard color="primary">
+                  <IonCardContent>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span className="font-heading" style={{ fontSize: '1.1rem' }}>
+                        Total Monthly Expenses
+                      </span>
+                      <span className="font-body" style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
+                        {formatCurrency(totalMonthlyExpenses)}
+                      </span>
+                    </div>
+                  </IonCardContent>
+                </IonCard>
+              )}
+
               {/* Hero: card background = state (danger/success/warning), projected balance + supporting line */}
               <IonCard className="home-hero" color={getHealthStatusColor(healthData.status)}>
                 <IonCardContent>
