@@ -48,9 +48,10 @@ const Expenses: React.FC = () => {
     if (!user) return;
     setLoading(true);
     setError(null);
-    const result = await apiGet<{ recurring: RecurringPattern[] }>('/api/transactions/recurring');
+    const result = await apiGet<{ recurring: RecurringPattern[]; totalMonthly: number }>('/api/transactions/recurring');
     if (result.ok && result.data) {
       setRecurringExpenses(result.data.recurring || []);
+      setTotalMonthlyExpenses(result.data.totalMonthly || 0);
     } else {
       setError(result.error || 'An error occurred');
     }

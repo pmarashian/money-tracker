@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '../../../../lib/auth';
 import { redisOps } from '../../../../lib/redis';
-import { detectRecurringTransactions, storeRecurringPatterns, type RecurringPattern } from '../../../../lib/recurring';
+import { detectRecurringTransactions, storeRecurringPatterns, type RecurringPattern, getMonthlyRecurringExpensesForCurrentMonth } from '../../../../lib/recurring';
 
 const FREQUENCIES = ['monthly', 'weekly', 'biweekly'] as const;
 
