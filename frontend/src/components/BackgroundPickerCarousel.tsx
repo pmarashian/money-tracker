@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FC } from 'react';
 import { BACKGROUND_OPTIONS, type BackgroundId } from '../lib/appBackgrounds';
 import { RrCmdButton } from './rr/RrCmdButton';
+import { RrWin } from './rr/RrWin';
 
 interface BackgroundPickerCarouselProps {
   backgroundId: BackgroundId;
@@ -71,6 +72,7 @@ export const BackgroundPickerCarousel: FC<BackgroundPickerCarouselProps> = ({
       <div className="bg-carousel__track" ref={trackRef}>
         {BACKGROUND_OPTIONS.map((option, index) => {
           const isApplied = backgroundId === option.id;
+          const isActive = index === activeIndex;
           return (
             <div
               key={option.id}
@@ -80,7 +82,13 @@ export const BackgroundPickerCarousel: FC<BackgroundPickerCarouselProps> = ({
               }}
             >
               <div
-                className={`bg-carousel__preview${isApplied ? ' bg-carousel__preview--selected' : ''}`}
+                className={[
+                  'bg-carousel__preview',
+                  isActive ? 'bg-carousel__preview--active' : '',
+                  isApplied ? 'bg-carousel__preview--applied' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
               >
                 {option.src ? (
                   <div
@@ -91,11 +99,10 @@ export const BackgroundPickerCarousel: FC<BackgroundPickerCarouselProps> = ({
                 ) : (
                   <div className="bg-carousel__preview-bg bg-carousel__preview-bg--none" aria-hidden />
                 )}
-                <div className="rr-win rr-win--dq bg-carousel__mock-win">
-                  <span className="rr-tag">BALANCE</span>
+                <RrWin tag="BALANCE" className="bg-carousel__mock-win">
                   <p className="rr-hero-label">Before next bonus</p>
                   <p className="rr-hero-value">$4,250</p>
-                </div>
+                </RrWin>
                 {isApplied && (
                   <span className="bg-carousel__applied" aria-label="Currently in use">✓</span>
                 )}

@@ -97,6 +97,10 @@
   --win-border: var(--c-white);
 }
 
+.rr-win--tagged {
+  padding-top: calc(var(--bw) + 23px);
+}
+
 .rr-tag {
   position: absolute;
   top: -9px;
@@ -224,8 +228,45 @@
 }
 
 .rr-cmd-item:disabled {
-  opacity: 0.45;
+  opacity: 1;
+  color: var(--c-dgrey);
+  background: #080810;
+  outline: 2px solid #404058;
   cursor: default;
+}
+
+.rr-cmd-item:disabled[aria-selected="true"] {
+  background: #080810;
+  outline: 2px solid #404058;
+}
+
+.rr-cmd-item:disabled .rr-cursor,
+.rr-cmd-item:disabled > .rr-cmd-item__cursor {
+  visibility: hidden !important;
+}
+
+.rr-cmd-row--horizontal {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0;
+  border-top: 2px dotted #303060;
+}
+
+.rr-cmd-row--horizontal .rr-cmd-item {
+  flex: 1 1 0;
+  width: auto;
+  min-width: 0;
+  min-height: 44px;
+  justify-content: flex-start;
+  padding: 10px 4px;
+  font-size: var(--fs-s);
+  line-height: var(--lh-s);
+}
+
+.rr-cmd-row--horizontal .rr-cmd-item + .rr-cmd-item {
+  border-top: none;
+  border-left: 2px dotted #303060;
 }
 
 .rr-cmd-item__text {
@@ -320,21 +361,32 @@ ion-modal.rr-modal .modal-wrapper {
 
 .mt-expense__amount {
   color: var(--c-gold);
-  font-size: var(--fs-l);
-  line-height: var(--lh-l);
-  text-align: right;
-}
-
-.mt-expense__name {
   font-size: var(--fs-m);
   line-height: var(--lh-m);
+  text-align: right;
+  flex: none;
+}
+
+.mt-expense__badges {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.mt-expense__badges .rr-badge {
+  margin-left: 0;
 }
 
 .mt-expense__schedule {
-  margin: 6px 0 8px;
+  margin: 4px 0 0;
   font-size: var(--fs-s);
   line-height: var(--lh-s);
   color: var(--c-grey);
+}
+
+.rr-win.mt-expense--paused {
+  opacity: 0.55;
 }
 
 .home-hero-win .rr-hero-value {
@@ -345,13 +397,13 @@ ion-modal.rr-modal .modal-wrapper {
 }
 
 .home-hero-win .rr-hero-label {
-  margin: 4px 0 0;
+  margin: 0;
   font-size: var(--fs-s);
   line-height: var(--lh-s);
   color: var(--c-grey);
 }
 
-.bg-carousel__preview {
+.rr-app .bg-carousel__preview {
   position: relative;
   width: 100%;
   aspect-ratio: 390 / 844;
@@ -359,6 +411,50 @@ ion-modal.rr-modal .modal-wrapper {
   margin: 0 auto;
   overflow: hidden;
   background: #000;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  isolation: isolate;
+}
+
+.rr-app .bg-carousel__preview::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  border: 3px solid var(--c-white);
+  clip-path: polygon(
+    3px 0,
+    calc(100% - 3px) 0,
+    calc(100% - 3px) 3px,
+    100% 3px,
+    100% calc(100% - 3px),
+    calc(100% - 3px) calc(100% - 3px),
+    calc(100% - 3px) 100%,
+    3px 100%,
+    3px calc(100% - 3px),
+    0 calc(100% - 3px),
+    0 3px,
+    3px 3px
+  );
+}
+
+.rr-app .bg-carousel__preview--active::before {
+  border-color: var(--c-gold);
+}
+
+.rr-app .bg-carousel__preview--applied::after {
+  content: "";
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 4;
+  width: 8px;
+  height: 14px;
+  background: var(--rr-cursor-dq) center / contain no-repeat;
+  image-rendering: pixelated;
+  pointer-events: none;
 }
 
 .bg-carousel__preview-bg {
@@ -369,12 +465,14 @@ ion-modal.rr-modal .modal-wrapper {
   image-rendering: pixelated;
 }
 
-.bg-carousel__mock-win {
+.rr-app .bg-carousel__mock-win {
   position: absolute;
   top: 14%;
   left: 8%;
   right: 8%;
-  padding: calc(3px + 6px) calc(3px + 8px);
+  z-index: 2;
+  margin-bottom: 0;
+  pointer-events: none;
 }
 
 .bg-carousel__track {
@@ -399,15 +497,17 @@ ion-modal.rr-modal .modal-wrapper {
   margin: 8px 0;
 }
 
-.bg-carousel__dot {
+.rr-app .bg-carousel__dot {
   width: 8px;
   height: 8px;
   padding: 0;
   border: 2px solid var(--c-white);
+  border-radius: 0;
   background: var(--c-black);
+  transform: none;
 }
 
-.bg-carousel__dot--active {
+.rr-app .bg-carousel__dot--active {
   background: var(--c-gold);
   border-color: var(--c-gold);
 }
@@ -448,12 +548,12 @@ ion-modal.rr-modal .modal-wrapper {
   gap: 8px;
 }
 
-.mt-expense--paused {
-  opacity: 0.55;
+.mt-expense__actions {
+  margin-top: 6px;
 }
 
-.mt-expense__actions {
-  margin-top: 4px;
+.mt-expense .rr-field {
+  margin-bottom: 10px;
 }
 
 .expenses-list .rr-win {
@@ -462,12 +562,22 @@ ion-modal.rr-modal .modal-wrapper {
 
 .expense-form-modal__body {
   padding: var(--edge);
-  padding-top: calc(var(--safe-top) + var(--gap));
-  padding-bottom: calc(var(--safe-bottom) + var(--gap));
+  padding-top: calc(var(--safe-top) + var(--edge));
+  padding-bottom: calc(var(--safe-bottom) + var(--edge));
+}
+
+.expense-form-modal__cmd-win {
+  margin-bottom: 0;
 }
 
 .expense-form-modal__actions {
-  margin-top: var(--gap);
+  margin: 0;
+  border-top: none;
+}
+
+.expense-form-modal__actions .rr-cmd-item {
+  font-size: var(--fs-m);
+  line-height: var(--lh-m);
 }
 
 .rr-app .home-snapshot {
@@ -489,11 +599,12 @@ ion-modal.rr-modal .modal-wrapper {
   color: var(--c-grey);
 }
 
-.rr-app .home-snapshot__status-badge {
+.rr-app .home-snapshot__status-tag {
   font-size: var(--fs-s);
   line-height: var(--lh-s);
   padding: 6px 8px;
-  border: 2px solid var(--c-white);
+  border: 3px solid var(--c-white);
+  border-radius: 0;
   background: var(--c-black);
 }
 
@@ -521,4 +632,12 @@ ion-modal.rr-modal .modal-wrapper {
   .rr-win {
     padding: calc(3px + 6px) calc(3px + 8px);
   }
+
+  .rr-win--tagged {
+    padding-top: calc(3px + 20px);
+  }
+}
+
+.rr-app .bg-carousel__applied {
+  display: none;
 }

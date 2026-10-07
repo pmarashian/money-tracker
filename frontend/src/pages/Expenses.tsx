@@ -36,9 +36,7 @@ const FREQUENCY_OPTIONS: { value: RecurringPattern['frequency']; label: string }
 ];
 
 function expenseNameTag(name: string): string {
-  const upper = name.trim().toUpperCase();
-  if (upper.length <= 12) return upper;
-  return `${upper.slice(0, 10)}..`;
+  return name.trim().toUpperCase();
 }
 
 const Expenses: React.FC = () => {
@@ -277,9 +275,7 @@ const Expenses: React.FC = () => {
                     className={expense.paused ? 'mt-expense--paused' : undefined}
                   >
                     <div className="mt-expense__row">
-                      <span className="mt-expense__name">
-                        {expense.name} {itemMarker(expense)}
-                      </span>
+                      <span className="mt-expense__badges">{itemMarker(expense)}</span>
                       <span className="mt-expense__amount">{formatCurrency(expense.amount)}</span>
                     </div>
                     <p className="mt-expense__schedule">
@@ -287,27 +283,21 @@ const Expenses: React.FC = () => {
                       {expense.typicalDayOfMonth != null && ` · Day ${expense.typicalDayOfMonth}`}
                       {expense.paused && ' · Paused'}
                     </p>
-                    <ol className="rr-cmd-list mt-expense__actions">
-                      <li>
-                        <RrCmdButton showCursor={false} onClick={() => togglePaused(index)}>
-                          {expense.paused ? 'Resume' : 'Pause'}
-                        </RrCmdButton>
-                      </li>
-                      <li>
-                        <RrCmdButton showCursor={false} onClick={() => openEdit(index)}>
-                          Edit
-                        </RrCmdButton>
-                      </li>
-                      <li>
-                        <RrCmdButton
-                          variant="danger"
-                          showCursor={false}
-                          onClick={() => setDeleteIndex(index)}
-                        >
-                          Delete
-                        </RrCmdButton>
-                      </li>
-                    </ol>
+                    <div className="rr-cmd-row rr-cmd-row--horizontal mt-expense__actions" role="group">
+                      <RrCmdButton showCursor onClick={() => togglePaused(index)}>
+                        {expense.paused ? 'Resume' : 'Pause'}
+                      </RrCmdButton>
+                      <RrCmdButton showCursor={false} onClick={() => openEdit(index)}>
+                        Edit
+                      </RrCmdButton>
+                      <RrCmdButton
+                        variant="danger"
+                        showCursor={false}
+                        onClick={() => setDeleteIndex(index)}
+                      >
+                        Delete
+                      </RrCmdButton>
+                    </div>
                   </RrWin>
                 ))}
             </div>
@@ -323,7 +313,7 @@ const Expenses: React.FC = () => {
           <IonPage className="rr-app">
             <IonContent>
               <div className="expense-form-modal__body">
-                <RrWin tag={editingIndex !== null ? 'EDIT' : 'ADD'}>
+                <RrWin tag={editingIndex !== null ? 'EDIT BILL' : 'NEW BILL'}>
                   <form id="expense-form" className="expense-form-modal__form" onSubmit={handleSubmit}>
                     {formError && <p className="rr-danger rr-fs-m">{formError}</p>}
                     <RrField
@@ -376,13 +366,8 @@ const Expenses: React.FC = () => {
                     )}
                   </form>
                 </RrWin>
-                <ol className="rr-cmd-list expense-form-modal__actions">
-                  <li>
-                    <RrCmdButton showCursor={false} onClick={closeModal}>
-                      Cancel
-                    </RrCmdButton>
-                  </li>
-                  <li>
+                <RrWin tag="COMMAND" className="expense-form-modal__cmd-win">
+                  <div className="rr-cmd-row rr-cmd-row--horizontal expense-form-modal__actions" role="group">
                     <RrCmdButton
                       type="submit"
                       form="expense-form"
@@ -391,8 +376,11 @@ const Expenses: React.FC = () => {
                     >
                       {submitLoading ? 'Saving...' : editingIndex !== null ? 'Save' : 'Add'}
                     </RrCmdButton>
-                  </li>
-                </ol>
+                    <RrCmdButton showCursor={false} onClick={closeModal}>
+                      Cancel
+                    </RrCmdButton>
+                  </div>
+                </RrWin>
               </div>
             </IonContent>
           </IonPage>

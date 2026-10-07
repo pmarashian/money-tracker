@@ -189,7 +189,7 @@ const Home: React.FC = () => {
 
           <div className="home-snapshot__status-row">
             <span className="home-snapshot__status-label">Status</span>
-            <span className={`home-snapshot__status-badge ${statusClass}`}>
+            <span className={`home-snapshot__status-tag ${statusClass}`}>
               {statusLabel(snapshot.status)}
             </span>
           </div>
