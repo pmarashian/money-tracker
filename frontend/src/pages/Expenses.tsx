@@ -4,24 +4,17 @@ import {
   IonPage,
   IonTitle,
   IonToolbar,
-  IonCard,
-  IonCardContent,
   IonSpinner,
-  IonText,
   IonButton,
   IonButtons,
   IonModal,
-  IonInput,
-  IonItem,
-  IonLabel,
-  IonSelect,
-  IonSelectOption,
   IonAlert,
-  IonBadge,
 } from '@ionic/react';
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { apiGet, apiPost, apiPatch, apiDelete } from '../lib/api';
+import { NesField } from '../components/nes/NesField';
+import { NesMenuPicker } from '../components/nes/NesMenuPicker';
 
 interface RecurringPattern {
   name: string;
@@ -35,6 +28,12 @@ interface RecurringPattern {
   externalKey?: string;
   nextDate?: string;
 }
+
+const FREQUENCY_OPTIONS: { value: RecurringPattern['frequency']; label: string }[] = [
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'biweekly', label: 'Bi-weekly' },
+];
 
 const Expenses: React.FC = () => {
   const { user } = useAuth();
@@ -196,26 +195,26 @@ const Expenses: React.FC = () => {
 
   const itemMarker = (expense: RecurringPattern) => {
     if (expense.userEdited || expense.source === 'manual') {
-      return <IonBadge color="tertiary" className="expense-marker">edited</IonBadge>;
+      return <span className="nes-badge nes-badge--edited">edited</span>;
     }
     if (expense.source === 'auto') {
-      return <IonBadge color="medium" className="expense-marker">auto</IonBadge>;
+      return <span className="nes-badge nes-badge--auto">auto</span>;
     }
     return null;
   };
 
   if (loading) {
     return (
-      <IonPage>
-        <IonHeader>
-          <IonToolbar>
-            <IonTitle>Expenses</IonTitle>
+      <IonPage className="nes-screen">
+        <IonHeader className="nes-screen__header">
+          <IonToolbar className="nes-toolbar">
+            <IonTitle className="nes-toolbar__title">Expenses</IonTitle>
           </IonToolbar>
         </IonHeader>
         <IonContent className="ion-text-center">
           <div className="ion-padding">
             <IonSpinner name="crescent" />
-            <p className="font-body">Loading recurring expenses...</p>
+            <p className="nes-lead">Loading recurring expenses...</p>
           </div>
         </IonContent>
       </IonPage>
@@ -224,18 +223,15 @@ const Expenses: React.FC = () => {
 
   if (error) {
     return (
-      <IonPage>
-        <IonHeader>
-          <IonToolbar>
-            <IonTitle>Expenses</IonTitle>
+      <IonPage className="nes-screen">
+        <IonHeader className="nes-screen__header">
+          <IonToolbar className="nes-toolbar">
+            <IonTitle className="nes-toolbar__title">Expenses</IonTitle>
           </IonToolbar>
         </IonHeader>
         <IonContent>
           <div className="ion-padding">
-            <IonText color="danger">
-              <h2>Error loading expenses</h2>
-              <p>{error}</p>
-            </IonText>
+            <p className="nes-error">{error}</p>
           </div>
         </IonContent>
       </IonPage>
@@ -243,15 +239,15 @@ const Expenses: React.FC = () => {
   }
 
   return (
-    <IonPage>
-      <IonHeader>
-        <IonToolbar>
-          <IonTitle>Expenses</IonTitle>
+    <IonPage className="nes-screen">
+      <IonHeader className="nes-screen__header">
+        <IonToolbar className="nes-toolbar">
+          <IonTitle className="nes-toolbar__title">Expenses</IonTitle>
         </IonToolbar>
       </IonHeader>
       <IonContent>
         <div className="ion-padding">
-          <p className="font-body expenses-intro">
+          <p className="nes-lead">
             Bills used by your projection. Your edits are never overwritten by sync.
           </p>
 
@@ -265,28 +261,25 @@ const Expenses: React.FC = () => {
 
           {visibleExpenses.length === 0 ? (
             <div className="ion-text-center ion-padding">
-              <IonText color="medium">
-                <h3>No active expenses</h3>
-                <p>Add a bill manually or sync from your assistant script.</p>
-              </IonText>
+              <p className="nes-lead">No active expenses.</p>
+              <p className="nes-lead">Add a bill or sync from your assistant.</p>
             </div>
           ) : (
             <div className="expenses-list">
               {[...visibleExpenses]
                 .sort((a, b) => a.expense.name.localeCompare(b.expense.name, undefined, { sensitivity: 'base' }))
                 .map(({ expense, index }) => (
-                  <IonCard
+                  <div
                     key={`${expense.externalKey ?? expense.name}-${index}`}
-                    className={`expense-item${expense.paused ? ' expense-item--paused' : ''}`}
+                    className={`nes-expense-card${expense.paused ? ' nes-expense-card--paused' : ''}`}
                   >
-                    <IonCardContent className="expense-item__content">
-                      <div className="expense-item__row expense-item__row--main">
-                        <span className="font-heading expense-item__name">
+                      <div className="nes-expense-card__row">
+                        <span className="nes-expense-card__name">
                           {expense.name} {itemMarker(expense)}
                         </span>
-                        <span className="font-body expense-item__amount">{formatCurrency(expense.amount)}</span>
+                        <span className="nes-expense-card__amount">{formatCurrency(expense.amount)}</span>
                       </div>
-                      <p className="expense-item__schedule font-body">
+                      <p className="nes-expense-card__schedule">
                         {formatFrequency(expense.frequency)}
                         {expense.typicalDayOfMonth != null && ` · Day ${expense.typicalDayOfMonth}`}
                         {expense.paused && ' · Paused'}
@@ -311,80 +304,79 @@ const Expenses: React.FC = () => {
                           Delete
                         </IonButton>
                       </div>
-                    </IonCardContent>
-                  </IonCard>
+                  </div>
                 ))}
             </div>
           )}
         </div>
 
-        <IonModal isOpen={showModal} onDidDismiss={closeModal} className="expense-form-modal">
-          <IonHeader className="expense-form-modal__header">
-            <IonToolbar className="expense-form-modal__toolbar">
+        <IonModal
+          isOpen={showModal}
+          onDidDismiss={closeModal}
+          className="expense-form-modal nes-screen"
+        >
+          <IonHeader className="nes-screen__header expense-form-modal__header">
+            <IonToolbar className="nes-toolbar expense-form-modal__toolbar">
               <IonButtons slot="start">
                 <IonButton className="btn-retro btn-retro--ghost" onClick={closeModal}>
                   Cancel
                 </IonButton>
               </IonButtons>
-              <IonTitle className="expense-form-modal__title font-heading">
+              <IonTitle className="nes-toolbar__title expense-form-modal__title">
                 {editingIndex !== null ? 'Edit bill' : 'Add bill'}
               </IonTitle>
             </IonToolbar>
           </IonHeader>
           <IonContent className="expense-form-modal__content">
-            <form className="expense-form-modal__form ion-padding" onSubmit={handleSubmit}>
-              {formError && (
-                <IonText color="danger" className="ion-margin-bottom">
-                  <p>{formError}</p>
-                </IonText>
-              )}
-              <IonItem>
-                <IonLabel position="stacked">Name</IonLabel>
-                <IonInput
-                  type="text"
-                  value={formName}
-                  onIonInput={(e) => setFormName(e.detail.value ?? '')}
-                  placeholder="e.g. Rent"
-                  required
-                />
-              </IonItem>
-              <IonItem>
-                <IonLabel position="stacked">Amount ($)</IonLabel>
-                <IonInput
-                  type="number"
-                  inputMode="decimal"
-                  min="0"
-                  step="0.01"
-                  value={formAmount}
-                  onIonInput={(e) => setFormAmount(e.detail.value ?? '')}
-                  placeholder="0.00"
-                  required
-                />
-              </IonItem>
-              <IonItem>
-                <IonLabel position="stacked">Frequency</IonLabel>
-                <IonSelect
+            <form className="expense-form-modal__form nes-panel" onSubmit={handleSubmit}>
+              {formError && <p className="nes-error">{formError}</p>}
+              <NesField
+                label="Name"
+                inputProps={{
+                  id: 'expense-name',
+                  type: 'text',
+                  value: formName,
+                  placeholder: 'e.g. Rent',
+                  required: true,
+                  onChange: (e) => setFormName(e.target.value),
+                }}
+              />
+              <NesField
+                label="Amount ($)"
+                inputProps={{
+                  id: 'expense-amount',
+                  type: 'number',
+                  inputMode: 'decimal',
+                  min: 0,
+                  step: '0.01',
+                  value: formAmount,
+                  placeholder: '0.00',
+                  required: true,
+                  onChange: (e) => setFormAmount(e.target.value),
+                }}
+              />
+              <div className="nes-field">
+                <span className="nes-field__label">Frequency</span>
+                <NesMenuPicker
+                  ariaLabel="Bill frequency"
                   value={formFrequency}
-                  onIonChange={(e) => setFormFrequency(e.detail.value as RecurringPattern['frequency'])}
-                  placeholder="Select"
-                >
-                  <IonSelectOption value="monthly">Monthly</IonSelectOption>
-                  <IonSelectOption value="weekly">Weekly</IonSelectOption>
-                  <IonSelectOption value="biweekly">Bi-weekly</IonSelectOption>
-                </IonSelect>
-              </IonItem>
+                  options={FREQUENCY_OPTIONS}
+                  onChange={setFormFrequency}
+                />
+              </div>
               {formFrequency === 'monthly' && (
-                <IonItem>
-                  <IonLabel position="stacked">Day of month (optional)</IonLabel>
-                  <IonInput
-                    type="number"
-                    min={1}
-                    max={31}
-                    value={formDayOfMonth}
-                    onIonInput={(e) => setFormDayOfMonth(e.detail.value ?? '')}
-                    placeholder="1–31"
-                  />
-                </IonItem>
+                <NesField
+                  label="Day of month (optional)"
+                  inputProps={{
+                    id: 'expense-day',
+                    type: 'number',
+                    min: 1,
+                    max: 31,
+                    value: formDayOfMonth,
+                    placeholder: '1-31',
+                    onChange: (e) => setFormDayOfMonth(e.target.value),
+                  }}
+                />
               )}
               <IonButton
                 expand="block"
@@ -399,9 +391,10 @@ const Expenses: React.FC = () => {
         </IonModal>
 
         <IonAlert
+          cssClass="nes-alert"
           isOpen={deleteIndex !== null}
           onDidDismiss={() => setDeleteIndex(null)}
-          header="Delete recurring expense?"
+          header="Delete bill?"
           message="This cannot be undone."
           buttons={[
             'Cancel',

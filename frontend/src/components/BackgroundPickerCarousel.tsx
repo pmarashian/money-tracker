@@ -1,5 +1,4 @@
-import { IonButton, IonIcon } from '@ionic/react';
-import { checkmarkCircle } from 'ionicons/icons';
+import { IonButton } from '@ionic/react';
 import { useCallback, useEffect, useRef, useState, type FC } from 'react';
 import { BACKGROUND_OPTIONS, type BackgroundId } from '../lib/appBackgrounds';
 
@@ -97,9 +96,7 @@ export const BackgroundPickerCarousel: FC<BackgroundPickerCarouselProps> = ({
                   <div className="home-stat-card__value">$4,250</div>
                 </div>
                 {isApplied && (
-                  <span className="bg-carousel__applied" aria-label="Currently in use">
-                    <IonIcon icon={checkmarkCircle} />
-                  </span>
+                  <span className="bg-carousel__applied" aria-label="Currently in use">✓</span>
                 )}
               </div>
             </div>
@@ -129,14 +126,7 @@ export const BackgroundPickerCarousel: FC<BackgroundPickerCarouselProps> = ({
         onClick={handleUseBackground}
         disabled={previewSelected}
       >
-        {previewSelected ? (
-          <>
-            <IonIcon icon={checkmarkCircle} slot="start" />
-            In use
-          </>
-        ) : (
-          'Use this background'
-        )}
+        {previewSelected ? '✓ In use' : 'Use this background'}
       </IonButton>
     </div>
   );
