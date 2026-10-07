@@ -110,6 +110,7 @@ ion-button.btn-retro.btn-retro--outline::part(native) {
 }
 
 ion-button.btn-retro.btn-retro--outline-danger::part(native) {
+  background: rgba(0, 0, 0, 0.55);
   color: #ff9a9a;
   border-top-color: #ff9a9a;
   border-left-color: #ff9a9a;

@@ -16,10 +16,18 @@
   --nes-inset-border: #303058;
   --nes-font: var(--font-heading);
   --nes-touch: 44px;
+  /* Pixel type scale (px) — minimum legible size 10px */
+  --nes-text-10: 10px;
+  --nes-text-12: 12px;
+  --nes-text-14: 14px;
+  --nes-text-16: 16px;
+  --nes-text-20: 20px;
+  --nes-gap-label: 6px;
+  --nes-gap-field: 16px;
   color: var(--nes-text);
   font-family: var(--nes-font);
-  font-size: 0.5rem;
-  line-height: 1.6;
+  font-size: var(--nes-text-12);
+  line-height: 1.5;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
@@ -38,21 +46,25 @@
   box-shadow: 0 3px 0 0 var(--nes-border-light) inset !important;
 }
 
+.nes-screen ion-buttons[slot='start'] {
+  padding-left: 12px;
+}
+
 .nes-screen .nes-toolbar__title,
 .nes-screen ion-title {
   font-family: var(--nes-font) !important;
-  font-size: 0.62rem !important;
+  font-size: var(--nes-text-16) !important;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   text-align: center;
-  padding: 0 3rem;
+  padding: 0 3.5rem;
 }
 
 .nes-screen .nes-lead {
   margin: 0 0 1rem;
   color: var(--nes-text-dim);
-  font-size: 0.48rem;
-  line-height: 1.7;
+  font-size: var(--nes-text-12);
+  line-height: 1.55;
 }
 
 /* RPG window panel */
@@ -73,7 +85,7 @@
   padding-bottom: 0.5rem;
   border-bottom: 2px solid var(--nes-border-mid);
   font-family: var(--nes-font);
-  font-size: 0.55rem;
+  font-size: var(--nes-text-14);
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--nes-accent);
@@ -82,29 +94,31 @@
 .nes-screen .nes-panel__body {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: var(--nes-gap-field);
 }
 
 .nes-screen .nes-field {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: var(--nes-gap-label);
+  margin: 0;
 }
 
 .nes-screen .nes-field__label {
   font-family: var(--nes-font);
-  font-size: 0.48rem;
+  font-size: var(--nes-text-12);
   color: var(--nes-text-dim);
   letter-spacing: 0.04em;
+  line-height: 1.4;
 }
 
 .nes-screen .nes-input {
   display: block;
   width: 100%;
   min-height: var(--nes-touch);
-  padding: 0.65rem 0.75rem;
+  padding: 10px 12px;
   font-family: var(--nes-font);
-  font-size: 0.52rem;
+  font-size: var(--nes-text-14);
   color: var(--nes-text);
   background: var(--nes-inset-bg);
   border: 3px solid var(--nes-inset-border);
@@ -121,6 +135,7 @@
 .nes-screen .nes-input::placeholder {
   color: var(--nes-text-dim);
   opacity: 0.85;
+  font-size: var(--nes-text-12);
 }
 
 .nes-screen .nes-input:focus {
@@ -134,27 +149,31 @@
 .nes-screen .nes-menu {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   border: 3px solid var(--nes-border-mid);
-  padding: 4px;
+  padding: 2px;
   background: var(--nes-inset-bg);
 }
 
 .nes-screen .nes-menu__item {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 6px;
   width: 100%;
+  height: var(--nes-touch);
   min-height: var(--nes-touch);
-  padding: 0.5rem 0.65rem;
+  max-height: var(--nes-touch);
+  padding: 0 10px;
   font-family: var(--nes-font);
-  font-size: 0.5rem;
+  font-size: var(--nes-text-14);
+  line-height: 1.2;
   color: var(--nes-text);
   background: transparent;
   border: none;
   border-radius: 0;
   text-align: left;
   cursor: pointer;
+  box-sizing: border-box;
 }
 
 .nes-screen .nes-menu__item--selected {
@@ -164,8 +183,9 @@
 }
 
 .nes-screen .nes-menu__cursor {
-  width: 0.65rem;
+  width: 12px;
   flex-shrink: 0;
+  font-size: var(--nes-text-12);
   color: var(--nes-border-light);
   animation: nes-cursor-blink 1s step-end infinite;
 }
@@ -188,21 +208,22 @@
 .nes-screen .nes-error {
   margin: 0;
   color: #ff8080;
-  font-size: 0.48rem;
+  font-size: var(--nes-text-12);
 }
 
 .nes-screen .nes-badge {
   display: inline-block;
   margin-left: 0.35rem;
-  padding: 2px 4px;
+  padding: 3px 6px;
   font-family: var(--nes-font);
-  font-size: 0.38rem;
+  font-size: var(--nes-text-10);
   letter-spacing: 0;
   text-transform: uppercase;
   vertical-align: middle;
   border: 2px solid var(--nes-border-mid);
   background: var(--nes-inset-bg);
   color: var(--nes-text-dim);
+  line-height: 1.2;
 }
 
 .nes-screen .nes-badge--edited {
@@ -214,7 +235,6 @@
   color: var(--nes-text-dim);
 }
 
-/* Kill default Ionic chrome inside NES screens */
 .nes-screen ion-card,
 .nes-screen ion-item {
   all: unset;
@@ -225,20 +245,28 @@
   --color: var(--nes-accent);
 }
 
-.nes-screen .settings-section-card,
-.nes-screen ion-card.expense-item {
-  all: unset;
+/* Expenses page */
+.nes-screen .expenses-page__add-btn {
+  margin-bottom: 14px;
 }
 
-/* Expense list cards as NES panels */
+.nes-screen .expenses-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 100%;
+  margin-top: 0;
+}
+
 .nes-screen .nes-expense-card {
   background: var(--nes-panel);
   border: 4px solid var(--nes-border-light);
   border-right-color: var(--nes-border-dark);
   border-bottom-color: var(--nes-border-dark);
   box-shadow: 4px 4px 0 0 #000;
-  padding: 0.75rem 0.85rem;
-  margin-bottom: 0.75rem;
+  padding: 0.85rem;
+  margin-bottom: 0;
 }
 
 .nes-screen .nes-expense-card--paused {
@@ -250,11 +278,12 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: 0.5rem;
-  margin-bottom: 0.35rem;
+  margin-bottom: 6px;
 }
 
 .nes-screen .nes-expense-card__name {
-  font-size: 0.55rem;
+  font-size: var(--nes-text-16);
+  line-height: 1.35;
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -263,25 +292,38 @@
 }
 
 .nes-screen .nes-expense-card__amount {
-  font-size: 0.55rem;
+  font-size: var(--nes-text-16);
+  line-height: 1.35;
   flex-shrink: 0;
 }
 
-.nes-screen .expenses-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  width: 100%;
-  max-width: 100%;
-}
-
 .nes-screen .nes-expense-card__schedule {
-  margin: 0 0 0.65rem;
-  font-size: 0.48rem;
+  margin: 0 0 10px;
+  font-size: var(--nes-text-12);
+  line-height: 1.35;
   color: var(--nes-text-dim);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Retro buttons inside NES screens — px type scale */
+.nes-screen ion-button.btn-retro::part(native) {
+  font-size: var(--nes-text-12);
+  min-height: var(--nes-touch);
+}
+
+.nes-screen ion-button.btn-retro.btn-retro--compact::part(native) {
+  font-size: var(--nes-text-10);
+  min-height: var(--nes-touch);
+  padding: 8px 6px;
+  line-height: 1.3;
+}
+
+.nes-screen ion-button.btn-retro.btn-retro--ghost::part(native) {
+  font-size: var(--nes-text-12);
+  padding: 8px 12px;
+  min-height: var(--nes-touch);
 }
 
 /* Modal */
@@ -291,10 +333,21 @@ ion-modal.expense-form-modal.nes-screen {
 
 ion-modal.expense-form-modal.nes-screen .expense-form-modal__form {
   padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--nes-gap-field);
+}
+
+ion-modal.expense-form-modal.nes-screen .expense-form-modal__form.nes-panel {
+  margin: 0;
 }
 
 ion-modal.expense-form-modal.nes-screen ion-content {
   --background: var(--nes-bg-deep);
+}
+
+ion-modal.expense-form-modal.nes-screen .expense-form-modal__title {
+  font-size: var(--nes-text-16) !important;
 }
 
 /* Carousel inside NES panel */
@@ -322,7 +375,7 @@ ion-modal.expense-form-modal.nes-screen ion-content {
 
 .nes-screen .bg-carousel__name {
   font-family: var(--nes-font);
-  font-size: 0.5rem;
+  font-size: var(--nes-text-12);
 }
 
 /* NES-styled alerts (delete confirm) */
@@ -343,7 +396,7 @@ ion-modal.expense-form-modal.nes-screen ion-content {
 .ion-alert.nes-alert .alert-message,
 .ion-alert.nes-alert .alert-button {
   font-family: var(--font-heading) !important;
-  font-size: 0.5rem !important;
+  font-size: var(--nes-text-12) !important;
 }
 
 .ion-alert.nes-alert .alert-button {

@@ -253,7 +253,7 @@ const Expenses: React.FC = () => {
 
           <IonButton
             expand="block"
-            className="btn-retro btn-retro--primary ion-margin-bottom"
+            className="btn-retro btn-retro--primary expenses-page__add-btn"
             onClick={openAdd}
           >
             Add recurring expense
@@ -298,7 +298,7 @@ const Expenses: React.FC = () => {
                           Edit
                         </IonButton>
                         <IonButton
-                          className="btn-retro btn-retro--outline-danger btn-retro--compact expense-item__action-btn"
+                          className="btn-retro btn-retro--danger btn-retro--compact expense-item__action-btn"
                           onClick={() => setDeleteIndex(index)}
                         >
                           Delete
