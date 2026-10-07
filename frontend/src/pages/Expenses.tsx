@@ -9,6 +9,7 @@ import {
   IonSpinner,
   IonText,
   IonButton,
+  IonButtons,
   IonModal,
   IonInput,
   IonItem,
@@ -254,7 +255,11 @@ const Expenses: React.FC = () => {
             Bills used by your projection. Your edits are never overwritten by sync.
           </p>
 
-          <IonButton expand="block" className="ion-margin-bottom" onClick={openAdd}>
+          <IonButton
+            expand="block"
+            className="btn-retro btn-retro--primary ion-margin-bottom"
+            onClick={openAdd}
+          >
             Add recurring expense
           </IonButton>
 
@@ -288,26 +293,19 @@ const Expenses: React.FC = () => {
                       </p>
                       <div className="expense-item__actions">
                         <IonButton
-                          fill="outline"
-                          size="small"
-                          className="expense-item__action-btn"
+                          className="btn-retro btn-retro--outline btn-retro--compact expense-item__action-btn"
                           onClick={() => togglePaused(index)}
                         >
                           {expense.paused ? 'Resume' : 'Pause'}
                         </IonButton>
                         <IonButton
-                          fill="outline"
-                          size="small"
-                          className="expense-item__action-btn"
+                          className="btn-retro btn-retro--outline btn-retro--compact expense-item__action-btn"
                           onClick={() => openEdit(index)}
                         >
                           Edit
                         </IonButton>
                         <IonButton
-                          fill="outline"
-                          color="danger"
-                          size="small"
-                          className="expense-item__action-btn"
+                          className="btn-retro btn-retro--outline-danger btn-retro--compact expense-item__action-btn"
                           onClick={() => setDeleteIndex(index)}
                         >
                           Delete
@@ -320,15 +318,21 @@ const Expenses: React.FC = () => {
           )}
         </div>
 
-        <IonModal isOpen={showModal} onDidDismiss={closeModal}>
-          <IonHeader>
-            <IonToolbar>
-              <IonTitle>{editingIndex !== null ? 'Edit recurring expense' : 'Add recurring expense'}</IonTitle>
-              <IonButton slot="end" fill="clear" onClick={closeModal}>Cancel</IonButton>
+        <IonModal isOpen={showModal} onDidDismiss={closeModal} className="expense-form-modal">
+          <IonHeader className="expense-form-modal__header">
+            <IonToolbar className="expense-form-modal__toolbar">
+              <IonButtons slot="start">
+                <IonButton className="btn-retro btn-retro--ghost" onClick={closeModal}>
+                  Cancel
+                </IonButton>
+              </IonButtons>
+              <IonTitle className="expense-form-modal__title font-heading">
+                {editingIndex !== null ? 'Edit bill' : 'Add bill'}
+              </IonTitle>
             </IonToolbar>
           </IonHeader>
-          <IonContent className="ion-padding">
-            <form onSubmit={handleSubmit}>
+          <IonContent className="expense-form-modal__content">
+            <form className="expense-form-modal__form ion-padding" onSubmit={handleSubmit}>
               {formError && (
                 <IonText color="danger" className="ion-margin-bottom">
                   <p>{formError}</p>
@@ -382,7 +386,12 @@ const Expenses: React.FC = () => {
                   />
                 </IonItem>
               )}
-              <IonButton expand="block" type="submit" className="ion-margin-top" disabled={submitLoading}>
+              <IonButton
+                expand="block"
+                type="submit"
+                className="btn-retro btn-retro--primary ion-margin-top"
+                disabled={submitLoading}
+              >
                 {submitLoading ? 'Saving...' : editingIndex !== null ? 'Save' : 'Add'}
               </IonButton>
             </form>

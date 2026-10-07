@@ -56,6 +56,116 @@ ion-page ion-content {
   line-height: 1.4;
 }
 
+/* NES/SNES-style chunky pixel buttons (shared across Settings, Expenses, modals) */
+ion-button.btn-retro {
+  --border-radius: 0;
+  --box-shadow: none;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: normal;
+  margin: 0;
+}
+
+ion-button.btn-retro::part(native) {
+  font-family: var(--font-heading);
+  font-size: 0.52rem;
+  line-height: 1.55;
+  border-radius: 0;
+  border: 3px solid #e8e8f0;
+  border-right-color: #1a1a2e;
+  border-bottom-color: #1a1a2e;
+  box-shadow: 4px 4px 0 0 #080810;
+  transition: transform 0.06s ease, box-shadow 0.06s ease;
+  padding: 10px 12px;
+  min-height: 2.75rem;
+}
+
+ion-button.btn-retro.btn-retro--primary::part(native) {
+  background: #2f5fd4;
+  color: #f4f8ff;
+  border-top-color: #9ec0ff;
+  border-left-color: #9ec0ff;
+  border-right-color: #142a6e;
+  border-bottom-color: #142a6e;
+}
+
+ion-button.btn-retro.btn-retro--danger::part(native) {
+  background: #c42b2b;
+  color: #fff5f5;
+  border-top-color: #ff9a9a;
+  border-left-color: #ff9a9a;
+  border-right-color: #5c1010;
+  border-bottom-color: #5c1010;
+  box-shadow: 4px 4px 0 0 #2a0808;
+}
+
+ion-button.btn-retro.btn-retro--outline::part(native) {
+  background: rgba(0, 0, 0, 0.55);
+  color: #9ec8ff;
+  border-top-color: #9ec8ff;
+  border-left-color: #9ec8ff;
+  border-right-color: #1e3a5f;
+  border-bottom-color: #1e3a5f;
+  box-shadow: 3px 3px 0 0 #0a1020;
+}
+
+ion-button.btn-retro.btn-retro--outline-danger::part(native) {
+  color: #ff9a9a;
+  border-top-color: #ff9a9a;
+  border-left-color: #ff9a9a;
+  border-right-color: #5c1010;
+  border-bottom-color: #5c1010;
+}
+
+ion-button.btn-retro.btn-retro--ghost::part(native) {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: #9ec8ff;
+  font-size: 0.55rem;
+  min-height: auto;
+  padding: 6px 8px;
+}
+
+ion-button.btn-retro.btn-retro--compact::part(native) {
+  font-size: 0.4rem;
+  line-height: 1.45;
+  min-height: 2.15rem;
+  padding: 6px 4px;
+  box-shadow: 3px 3px 0 0 #080810;
+}
+
+ion-button.btn-retro.ion-activated::part(native),
+ion-button.btn-retro:active::part(native) {
+  transform: translateY(2px);
+  box-shadow: 2px 2px 0 0 #080810;
+}
+
+ion-button.btn-retro.btn-retro--danger.ion-activated::part(native),
+ion-button.btn-retro.btn-retro--danger:active::part(native) {
+  box-shadow: 2px 2px 0 0 #2a0808;
+}
+
+ion-button.btn-retro.btn-retro--outline.ion-activated::part(native),
+ion-button.btn-retro.btn-retro--outline:active::part(native),
+ion-button.btn-retro.btn-retro--outline-danger.ion-activated::part(native),
+ion-button.btn-retro.btn-retro--outline-danger:active::part(native) {
+  box-shadow: 1px 1px 0 0 #0a1020;
+}
+
+ion-button.btn-retro.btn-retro--ghost.ion-activated::part(native),
+ion-button.btn-retro.btn-retro--ghost:active::part(native) {
+  transform: none;
+  box-shadow: none;
+  opacity: 0.75;
+}
+
+ion-button.btn-retro[disabled]::part(native) {
+  opacity: 0.5;
+  transform: none;
+  filter: grayscale(0.2);
+}
+
 /* Home page - card background color = state (danger/success/warning) */
 .home-hero {
   margin-top: 0.5rem;
@@ -387,6 +497,7 @@ body[data-app-background='1'] .app-tab-bar {
 
 .bg-carousel__use-btn {
   margin-top: 0;
+  width: 100%;
 }
 
 .expense-marker {
@@ -494,9 +605,19 @@ body[data-app-background='1'] .app-tab-bar {
   letter-spacing: 1px;
 }
 
-.ion-button:hover {
+.ion-button:not(.btn-retro):hover {
   background: var(--ion-color-step-100) !important;
   border-color: var(--ion-color-step-200) !important;
+}
+
+ion-button.btn-retro {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+ion-button.btn-retro:hover {
+  background: transparent !important;
 }
 
 /* Form inputs - minimalist */
@@ -741,9 +862,49 @@ ion-card.expense-item {
   margin: 0;
   width: 100%;
   min-width: 0;
-  --padding-start: 6px;
-  --padding-end: 6px;
-  font-size: 0.72rem;
+}
+
+/* Add / edit recurring expense modal */
+ion-modal.expense-form-modal {
+  --background: rgba(8, 8, 14, 0.96);
+  --backdrop-opacity: 0.55;
+}
+
+.expense-form-modal__header ion-toolbar.expense-form-modal__toolbar {
+  --background: rgba(10, 10, 16, 0.92);
+  --border-color: var(--ion-color-step-300);
+  --min-height: 52px;
+  padding-top: env(safe-area-inset-top, 0);
+}
+
+.expense-form-modal__title {
+  font-family: var(--font-heading) !important;
+  font-size: 1.05rem !important;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: center;
+  padding-inline: 4.5rem;
+}
+
+
+.expense-form-modal__content {
+  --background: transparent;
+}
+
+.expense-form-modal__form ion-item {
+  --background: rgba(0, 0, 0, 0.4);
+  --border-color: var(--ion-color-step-300);
+  margin-bottom: 0.65rem;
+  border: 1px solid var(--ion-color-step-300) !important;
+  border-radius: 0 !important;
+}
+
+.expense-form-modal__form ion-label {
+  font-family: var(--font-body);
+}
+
+.expense-form-modal__form ion-button.btn-retro[type='submit'] {
+  margin-top: 1rem;
 }
 
 /* Settings page */

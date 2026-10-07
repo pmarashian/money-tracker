@@ -125,7 +125,7 @@ export const BackgroundPickerCarousel: FC<BackgroundPickerCarouselProps> = ({
 
       <IonButton
         expand="block"
-        className="bg-carousel__use-btn"
+        className="btn-retro btn-retro--primary bg-carousel__use-btn"
         onClick={handleUseBackground}
         disabled={previewSelected}
       >

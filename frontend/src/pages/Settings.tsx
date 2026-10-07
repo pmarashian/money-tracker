@@ -184,7 +184,7 @@ const Settings: React.FC = () => {
               </IonItem>
               <IonButton
                 expand="block"
-                className="ion-margin-top"
+                className="btn-retro btn-retro--primary ion-margin-top"
                 onClick={saveSettings}
                 disabled={saving}
               >
@@ -225,7 +225,7 @@ const Settings: React.FC = () => {
               )}
               <IonButton
                 expand="block"
-                className="ion-margin-top"
+                className="btn-retro btn-retro--primary ion-margin-top"
                 onClick={handlePasswordChange}
                 disabled={
                   passwordChanging ||
@@ -239,8 +239,7 @@ const Settings: React.FC = () => {
               </IonButton>
               <IonButton
                 expand="block"
-                color="danger"
-                className="ion-margin-top"
+                className="btn-retro btn-retro--danger ion-margin-top"
                 onClick={async () => {
                   await logout();
                   navigate('/login');
