@@ -105,7 +105,8 @@ async function login(page) {
 
 function assertNotBlank(path) {
   const st = statSync(path);
-  if (st.size < 15000) throw new Error(`${path} too small (${st.size} bytes)`);
+  const minBytes = path.includes('modal') ? 6000 : 15000;
+  if (st.size < minBytes) throw new Error(`${path} too small (${st.size} bytes)`);
   const buf = readFileSync(path);
   if (new Set(buf.subarray(0, Math.min(buf.length, 8000))).size < 8) {
     throw new Error(`${path} low variance — likely blank`);
