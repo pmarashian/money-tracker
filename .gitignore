@@ -64,7 +64,8 @@ coverage/
 
 # IDE and OS directories
 tasks/
-docs/
+docs/*
+!docs/push-api.md
 
 logs/
 log-analysis/
