@@ -1,19 +1,13 @@
-import React, { useState } from "react";
-import {
-  IonContent,
-  IonPage,
-  IonItem,
-  IonLabel,
-  IonInput,
-  IonButton,
-  IonText,
-  IonLoading,
-} from "@ionic/react";
-import { Link } from "react-router-dom";
-import { apiPost } from "../lib/api";
+import React, { useState } from 'react';
+import { apiPost } from '../lib/api';
+import { AuthScreenShell } from '../components/auth/AuthScreenShell';
+import { AuthNavLink } from '../components/auth/AuthNavLink';
+import { RrWin } from '../components/rr/RrWin';
+import { RrField } from '../components/rr/RrField';
+import { RrCmdButton } from '../components/rr/RrCmdButton';
 
 const ForgotPassword: React.FC = () => {
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -22,10 +16,7 @@ const ForgotPassword: React.FC = () => {
     setLoading(true);
     setSuccess(false);
 
-    const result = await apiPost<{ message?: string }>(
-      "/api/auth/forgot-password",
-      { email }
-    );
+    const result = await apiPost<{ message?: string }>('/api/auth/forgot-password', { email });
 
     setLoading(false);
     if (result.ok) {
@@ -34,76 +25,52 @@ const ForgotPassword: React.FC = () => {
   };
 
   return (
-    <IonPage>
-      <IonContent className="ion-padding" fullscreen>
-        <div style={{ paddingTop: "5rem" }}>
-          <div className="ion-text-center" style={{ marginBottom: "1.5rem" }}>
-            <img
-              src="/images/money-bag.png"
-              alt="Money Tracker"
-              style={{
-                height: "80px",
-                width: "auto",
-                display: "block",
-                margin: "0 auto",
-              }}
-            />
-          </div>
-
-          <div className="ion-text-center ion-margin-bottom">
-            <p className="font-body">Forgot password</p>
-          </div>
-
-          {success ? (
-            <div className="ion-text-center ion-padding">
-              <IonText>
-                If an account exists with this email, you&apos;ll receive a reset
-                link. Check your inbox.
-              </IonText>
-              <div className="ion-margin-top">
-                <Link to="/reset-password">Go to reset password page</Link>
-                {" · "}
-                <Link to="/login">Back to Sign In</Link>
-              </div>
-            </div>
-          ) : (
-            <>
-              <form onSubmit={handleSubmit}>
-                <IonItem>
-                  <IonLabel position="stacked">Email</IonLabel>
-                  <IonInput
-                    type="email"
-                    value={email}
-                    onIonInput={(e) => setEmail(e.detail.value ?? "")}
-                    required
-                    placeholder="Enter your email"
-                  />
-                </IonItem>
-
-                <IonButton
-                  expand="block"
-                  type="submit"
-                  className="ion-margin-top"
-                  disabled={loading}
-                >
-                  {loading ? "Sending..." : "Send reset link"}
-                </IonButton>
-              </form>
-
-              <div className="ion-text-center ion-margin-top">
-                <IonText color="medium">
-                  <Link to="/reset-password">Already have a code?</Link>
-                  {" · "}
-                  <Link to="/login">Back to Sign In</Link>
-                </IonText>
-              </div>
-            </>
-          )}
-        </div>
-
-        <IonLoading isOpen={loading} message="Sending..." />
-      </IonContent>
-    </IonPage>
+    <AuthScreenShell subtitle="FORGOT PASSWORD">
+      {success ? (
+        <>
+          <RrWin tag="SENT">
+            <p className="auth-screen__message">
+              If an account exists with this email, you&apos;ll receive a reset link. Check your
+              inbox.
+            </p>
+          </RrWin>
+          <nav className="auth-screen__nav">
+            <AuthNavLink to="/reset-password">Have a reset code</AuthNavLink>
+            <AuthNavLink to="/login">Back to sign in</AuthNavLink>
+          </nav>
+        </>
+      ) : (
+        <>
+          <form className="auth-screen__form" onSubmit={handleSubmit}>
+            <RrWin tag="EMAIL">
+              <RrField
+                label="Email"
+                inputProps={{
+                  id: 'forgot-email',
+                  type: 'email',
+                  name: 'email',
+                  autoComplete: 'email',
+                  inputMode: 'email',
+                  value: email,
+                  placeholder: 'you@mail.com',
+                  required: true,
+                  onChange: (e) => setEmail(e.target.value),
+                }}
+              />
+            </RrWin>
+            <RrWin tag="COMMAND" className="auth-screen__cmd-win">
+              <RrCmdButton type="submit" disabled={loading} showCursor={!loading}>
+                {loading ? 'SENDING...' : 'SEND RESET LINK'}
+              </RrCmdButton>
+            </RrWin>
+          </form>
+          <nav className="auth-screen__nav">
+            <AuthNavLink to="/reset-password">Have a reset code</AuthNavLink>
+            <AuthNavLink to="/login">Back to sign in</AuthNavLink>
+          </nav>
+        </>
+      )}
+    </AuthScreenShell>
   );
 };
 

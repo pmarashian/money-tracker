@@ -647,6 +647,121 @@ ion-modal.rr-modal .modal-wrapper {
   }
 }
 
+/* Auth screens (login / forgot / reset) */
+.auth-screen ion-content.auth-screen__content {
+  --background: #000000;
+  --padding-start: var(--edge);
+  --padding-end: var(--edge);
+  --padding-top: calc(var(--safe-top) + var(--edge));
+  --padding-bottom: calc(var(--safe-bottom) + var(--edge));
+}
+
+.auth-screen__wrap {
+  max-width: var(--col-max);
+  margin: 0 auto;
+  padding-bottom: 24px;
+}
+
+.auth-screen__brand {
+  text-align: center;
+  margin-bottom: var(--gap);
+}
+
+.auth-screen__logo {
+  display: block;
+  margin: 0 auto;
+  image-rendering: pixelated;
+}
+
+.auth-screen__title {
+  margin: 12px 0 0;
+  font-size: var(--fs-l);
+  line-height: var(--lh-l);
+  font-weight: normal;
+  color: var(--c-white);
+  letter-spacing: 1px;
+}
+
+.auth-screen__subtitle {
+  margin: 8px 0 16px;
+  font-size: var(--fs-l);
+  line-height: var(--lh-l);
+  color: var(--c-grey);
+  letter-spacing: 1px;
+}
+
+.auth-screen__form {
+  margin: 0;
+}
+
+.auth-screen .rr-input {
+  font-size: var(--fs-l);
+  line-height: var(--lh-l);
+}
+
+.auth-screen .rr-input::placeholder {
+  font-size: var(--fs-m);
+  line-height: var(--lh-m);
+}
+
+.auth-screen__cmd-win {
+  margin-bottom: var(--gap);
+}
+
+.auth-screen__cmd-win .rr-cmd-item {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.auth-screen__nav {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--gap);
+}
+
+.auth-screen__nav--compact {
+  margin-top: 0;
+  margin-bottom: var(--gap);
+}
+
+.auth-screen__nav-link {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 12px 4px;
+  font-family: inherit;
+  font-size: var(--fs-m);
+  line-height: var(--lh-m);
+  color: var(--c-white);
+  text-decoration: none;
+  border-top: 2px dotted #303060;
+  box-sizing: border-box;
+}
+
+.auth-screen__nav > .auth-screen__nav-link:first-child {
+  border-top: none;
+}
+
+.auth-screen__message {
+  margin: 0;
+  font-size: var(--fs-m);
+  line-height: var(--lh-m);
+  color: var(--c-grey);
+}
+
+.auth-screen__hint {
+  margin: 0 0 var(--gap);
+  text-align: center;
+}
+
+.auth-screen .rr-field {
+  margin-bottom: 12px;
+}
+
+.auth-screen .rr-field:last-child {
+  margin-bottom: 0;
+}
+
 .rr-app .bg-carousel__applied {
   display: none;
 }
