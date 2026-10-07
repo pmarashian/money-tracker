@@ -622,29 +622,54 @@ ion-modal.rr-modal .modal-wrapper {
 }
 
 .rr-app .home-snapshot__status-row {
+  container-type: inline-size;
+  container-name: home-status;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  column-gap: 12px;
+  row-gap: 8px;
+  width: 100%;
   margin-bottom: 4px;
   min-height: 48px;
 }
 
 .rr-app .home-snapshot__status-label {
+  flex: 0 0 auto;
   font-size: var(--home-fs-body);
   line-height: var(--home-lh-body);
   color: var(--c-grey);
 }
 
 .rr-app .home-snapshot__status-tag {
+  flex: 0 0 auto;
+  margin-left: auto;
   font-size: var(--home-fs-body);
   line-height: var(--home-lh-body);
   padding: 8px 10px;
   border: 3px solid var(--c-white);
   border-radius: 0;
   background: var(--c-black);
-  text-align: right;
-  max-width: 58%;
+  text-align: center;
+  white-space: nowrap;
+  hyphens: none;
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+@container home-status (max-width: 19.5rem) {
+  .rr-app .home-snapshot__status-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .rr-app .home-snapshot__status-tag {
+    flex: 1 1 auto;
+    width: 100%;
+    margin-left: 0;
+    text-align: left;
+  }
 }
 
 .rr-app .home-snapshot__status--ok {
