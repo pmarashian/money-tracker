@@ -63,6 +63,10 @@ export const redisKeys = {
 
   // Teller bank connection (enrollment + access token per user)
   tellerEnrollment: (userId: string) => `mt:teller:enrollment:${userId}`,
+
+  // Assistant-pushed financial snapshot (latest + history list)
+  snapshot: (userId: string) => `mt:snapshot:${userId}`,
+  snapshotHistory: (userId: string) => `mt:snapshot:history:${userId}`,
 };
 
 /**
@@ -118,6 +122,16 @@ export const redisOps = {
   async ttl(key: string): Promise<number> {
     const client = getRedisClient();
     return await client.ttl(key);
+  },
+
+  async lpush(key: string, ...values: string[]): Promise<number> {
+    const client = getRedisClient();
+    return await client.lpush(key, ...values);
+  },
+
+  async ltrim(key: string, start: number, stop: number): Promise<'OK'> {
+    const client = getRedisClient();
+    return await client.ltrim(key, start, stop);
   },
 };
 

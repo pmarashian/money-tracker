@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   IonContent,
   IonHeader,
@@ -11,135 +11,102 @@ import {
   IonCardContent,
   IonSpinner,
   IonText,
-  IonButton,
-  IonIcon,
+  IonList,
+  IonItem,
+  IonLabel,
+  IonBadge,
+  IonNote,
 } from '@ionic/react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { calendarOutline, settingsOutline } from 'ionicons/icons';
 import { apiGet } from '../lib/api';
 import { parseDateOnlyAsLocal } from '../lib/dateUtils';
 
-interface HealthData {
-  status: 'not_enough' | 'enough' | 'too_much';
-  projectedBalance: number;
-  breakdown: {
-    inflows: {
-      payroll: number;
-      bonus: number;
-      total: number;
-    };
-    outflows: {
-      recurring: number;
-      total: number;
-    };
-    netFlow: number;
-  };
-  projectionPeriodDays: number;
-  currentBalance?: number;
-  nextPaycheckDate?: string | null;
+const NY_TZ = 'America/New_York';
+
+interface SnapshotBill {
+  name: string;
+  amount: number;
+  frequency: string;
+  next_date: string;
 }
 
-interface UserSettings {
-  balance: number;
-  paycheckAmount: number;
-  nextBonusDate: string;
-  bonusAmount?: number;
-  nextPaycheckDate?: string;
+interface SnapshotAmountDate {
+  amount: number;
+  date: string;
+}
+
+interface MoneySnapshot {
+  as_of: string;
+  current_available_balance: number;
+  next_bonus_date: string;
+  projected_low_to_bonus: SnapshotAmountDate;
+  topoff_needed_after_bonus: number;
+  following_bonus_date: string;
+  low_after_topoff: SnapshotAmountDate;
+  status: 'on_track' | 'needs_topoff';
+  topoff_needed_now: number;
+  bills: SnapshotBill[];
+}
+
+interface SnapshotResponse {
+  snapshot: MoneySnapshot | null;
+  as_of: string | null;
+  received_at: string | null;
+  stale: boolean;
 }
 
 const Home: React.FC = () => {
   const location = useLocation();
   const { user, loading: authLoading } = useAuth();
-  const [healthData, setHealthData] = useState<HealthData | null>(null);
-  const [settings, setSettings] = useState<UserSettings | null>(null);
-  const [totalMonthlyExpenses, setTotalMonthlyExpenses] = useState(0);
-  const [loadingExpenses, setLoadingExpenses] = useState(false);
+  const [snapshotResponse, setSnapshotResponse] = useState<SnapshotResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchHealthData = async () => {
-    const result = await apiGet<HealthData>('/api/health');
+  const fetchSnapshot = async () => {
+    const result = await apiGet<SnapshotResponse>('/api/snapshot');
     if (result.ok && result.data) {
-      setHealthData(result.data);
+      setSnapshotResponse(result.data);
     } else if (result.status === 401) {
       setError('Authentication required');
     } else {
-      setError(result.error || 'Failed to load health data');
+      setError(result.error || 'Failed to load snapshot');
     }
   };
-
-  const fetchSettings = async () => {
-    const result = await apiGet<UserSettings>('/api/settings');
-    if (result.ok && result.data) {
-      setSettings(result.data);
-    }
-  };
-
-  const fetchTotalExpenses = useCallback(async () => {
-    if (!user) return;
-    setLoadingExpenses(true);
-    const result = await apiGet<{ recurring: any[]; totalMonthly: number }>(`/api/transactions/recurring?t=${Date.now()}`);
-    if (result.ok && result.data) {
-      setTotalMonthlyExpenses(result.data.totalMonthly || 0);
-    }
-    setLoadingExpenses(false);
-  }, [user]);
 
   useEffect(() => {
     if (user && location.pathname === '/app/home') {
       setLoading(true);
       setError(null);
-      Promise.all([fetchHealthData(), fetchSettings(), fetchTotalExpenses()]).finally(() => {
-        setLoading(false);
-      });
+      fetchSnapshot().finally(() => setLoading(false));
     } else if (!authLoading) {
       setLoading(false);
     }
   }, [user, authLoading, location.pathname]);
 
-  const getHealthStatusColor = (status: string) => {
-    switch (status) {
-      case 'not_enough':
-        return 'danger';
-      case 'enough':
-        return 'success';
-      case 'too_much':
-        return 'warning';
-      default:
-        return 'medium';
-    }
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+
+  const formatDateOnly = (dateStr: string) => {
+    const d = parseDateOnlyAsLocal(dateStr);
+    return d ? d.toLocaleDateString('en-US', { timeZone: NY_TZ }) : dateStr;
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
+  const formatAsOfNy = (iso: string) => {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    return d.toLocaleString('en-US', {
+      timeZone: NY_TZ,
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    });
   };
 
-  const getNextPaycheckDate = (): Date | null => {
-    if (!settings?.paycheckAmount) return null;
-    const dateStr = healthData?.nextPaycheckDate ?? settings?.nextPaycheckDate;
-    if (dateStr) {
-      const d = parseDateOnlyAsLocal(dateStr);
-      if (d) return d;
-    }
-    const today = new Date();
-    return new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000);
-  };
+  const statusColor = (status: MoneySnapshot['status']) =>
+    status === 'on_track' ? 'success' : 'warning';
 
-  const getDaysUntilBonus = () => {
-    if (!settings?.nextBonusDate) return null;
-
-    const today = new Date();
-    const bonusDate = parseDateOnlyAsLocal(settings.nextBonusDate);
-    if (!bonusDate) return null;
-    const diffTime = bonusDate.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    return diffDays > 0 ? diffDays : null;
-  };
+  const statusLabel = (status: MoneySnapshot['status']) =>
+    status === 'on_track' ? 'On track' : 'Needs top-off';
 
   if (authLoading || loading) {
     return (
@@ -152,7 +119,7 @@ const Home: React.FC = () => {
         <IonContent className="ion-padding ion-text-center">
           <IonSpinner name="crescent" />
           <IonText color="medium">
-            <p>Loading your financial health...</p>
+            <p>Loading your snapshot...</p>
           </IonText>
         </IonContent>
       </IonPage>
@@ -168,7 +135,7 @@ const Home: React.FC = () => {
           </IonToolbar>
         </IonHeader>
         <IonContent className="ion-padding">
-          <p className="font-body">Please log in to view your financial health.</p>
+          <p className="font-body">Please log in to view your finances.</p>
         </IonContent>
       </IonPage>
     );
@@ -186,7 +153,7 @@ const Home: React.FC = () => {
           <IonCard color="danger">
             <IonCardContent>
               <IonText color="danger">
-                <p>Error loading financial health: {error}</p>
+                <p>{error}</p>
               </IonText>
             </IonCardContent>
           </IonCard>
@@ -195,10 +162,34 @@ const Home: React.FC = () => {
     );
   }
 
-  const hasSettings = settings && settings.paycheckAmount > 0;
-  const nextPaycheckDate = getNextPaycheckDate();
-  const daysUntilBonus = getDaysUntilBonus();
-  const shouldShowExpensesCard = totalMonthlyExpenses > 0;
+  const snapshot = snapshotResponse?.snapshot;
+
+  if (!snapshot) {
+    return (
+      <IonPage>
+        <IonHeader>
+          <IonToolbar>
+            <IonTitle>Money Tracker</IonTitle>
+          </IonToolbar>
+        </IonHeader>
+        <IonContent className="ion-padding">
+          <IonCard color="medium">
+            <IonCardHeader>
+              <IonCardTitle>No snapshot yet</IonCardTitle>
+            </IonCardHeader>
+            <IonCardContent>
+              <p className="font-body">
+                Your assistant has not pushed a financial snapshot yet. Once the first push
+                lands, balances and bills will show here.
+              </p>
+            </IonCardContent>
+          </IonCard>
+        </IonContent>
+      </IonPage>
+    );
+  }
+
+  const asOfDisplay = snapshotResponse?.as_of ?? snapshot.as_of;
 
   return (
     <IonPage>
@@ -209,113 +200,113 @@ const Home: React.FC = () => {
       </IonHeader>
       <IonContent>
         <div className="ion-padding">
-          {!hasSettings ? (
+          {snapshotResponse?.stale && (
             <IonCard color="warning">
-              <IonCardHeader>
-                <IonCardTitle>Setup Required</IonCardTitle>
-              </IonCardHeader>
               <IonCardContent>
-                <p className="font-body">
-                  Set up your income and balance information to see your financial health.
-                </p>
-                <IonButton
-                  fill="clear"
-                  routerLink="/app/settings"
-                  color="primary"
-                >
-                  <IonIcon slot="start" icon={settingsOutline} />
-                  Go to Settings
-                </IonButton>
-              </IonCardContent>
-            </IonCard>
-          ) : healthData ? (
-            <>
-              {/* Total Monthly Expenses Card */}
-              {shouldShowExpensesCard && (
-                <IonCard color="primary">
-                  <IonCardContent>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span className="font-heading" style={{ fontSize: '1.1rem' }}>
-                        Total Monthly Expenses
-                      </span>
-                      <span className="font-body" style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
-                        {formatCurrency(totalMonthlyExpenses)}
-                      </span>
-                    </div>
-                  </IonCardContent>
-                </IonCard>
-              )}
-
-              {/* Hero: card background = state (danger/success/warning), projected balance + supporting line */}
-              <IonCard className="home-hero" color={getHealthStatusColor(healthData.status)}>
-                <IonCardContent>
-                  {(healthData.currentBalance !== undefined || settings?.balance !== undefined) && (
-                    <p className="home-hero__supporting" style={{ marginBottom: '0.5rem' }}>
-                      Current balance: {formatCurrency(healthData.currentBalance ?? settings?.balance ?? 0)}
-                    </p>
-                  )}
-                  <div className="home-hero__balance">
-                    <span className="home-hero__balance-label">
-                      Balance in {healthData.projectionPeriodDays} days
-                    </span>
-                    <span className="home-hero__balance-value">
-                      {formatCurrency(healthData.projectedBalance)}
-                    </span>
-                  </div>
-                  <p className="home-hero__supporting">
-                    Based on {healthData.projectionPeriodDays}-day projection · Net flow: {formatCurrency(healthData.breakdown.netFlow)}
+                <IonText>
+                  <p className="font-body">
+                    Snapshot is over 3 days old (as of {formatAsOfNy(asOfDisplay)}). Ask your
+                    assistant to push an update.
                   </p>
-                  <p className="home-hero__supporting">
-                    Expenses: {formatCurrency(healthData.breakdown.outflows.total)}
-                    {' · Payroll: '}
-                    {formatCurrency(healthData.breakdown.inflows.payroll)}
-                    {healthData.breakdown.inflows.bonus > 0
-                      ? ` · Bonus: ${formatCurrency(healthData.breakdown.inflows.bonus)}`
-                      : ''}
-                  </p>
-                </IonCardContent>
-              </IonCard>
-
-              {/* Upcoming: paycheck + bonus in compact rows */}
-              <IonCard className="home-upcoming">
-                <IonCardContent>
-                  {nextPaycheckDate && (
-                    <div className="home-upcoming__row">
-                      <span className="home-upcoming__label">
-                        <IonIcon icon={calendarOutline} className="home-upcoming__icon" />
-                        Next paycheck
-                      </span>
-                      <span className="home-upcoming__value">{nextPaycheckDate.toLocaleDateString()}</span>
-                    </div>
-                  )}
-                  {daysUntilBonus != null && daysUntilBonus > 0 && (
-                    <div className="home-upcoming__row">
-                      <span className="home-upcoming__label">
-                        <IonIcon icon={calendarOutline} className="home-upcoming__icon" />
-                        Bonus
-                      </span>
-                      <span className="home-upcoming__value">
-                        {daysUntilBonus} days
-                      </span>
-                    </div>
-                  )}
-                  {!nextPaycheckDate && (daysUntilBonus == null || daysUntilBonus <= 0) && (
-                    <p className="home-upcoming__empty font-body">
-                      No upcoming income events
-                    </p>
-                  )}
-                </IonCardContent>
-              </IonCard>
-            </>
-          ) : (
-            <IonCard color="medium">
-              <IonCardContent>
-                <IonText color="medium">
-                  <p>No health data available. Upload transactions to see your financial health.</p>
                 </IonText>
               </IonCardContent>
             </IonCard>
           )}
+
+          <IonCard className="home-hero" color={statusColor(snapshot.status)}>
+            <IonCardContent>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className="home-hero__balance-label">Status</span>
+                <IonBadge color={statusColor(snapshot.status)} style={{ fontSize: '1rem', padding: '8px 12px' }}>
+                  {statusLabel(snapshot.status)}
+                </IonBadge>
+              </div>
+              {snapshot.status === 'needs_topoff' && snapshot.topoff_needed_now > 0 && (
+                <div className="home-hero__balance" style={{ marginTop: '0.75rem' }}>
+                  <span className="home-hero__balance-label">Add now</span>
+                  <span className="home-hero__balance-value">{formatCurrency(snapshot.topoff_needed_now)}</span>
+                </div>
+              )}
+              <p className="home-hero__supporting" style={{ marginTop: '0.75rem' }}>
+                Available: {formatCurrency(snapshot.current_available_balance)}
+              </p>
+              <p className="home-hero__supporting">
+                Updated {formatAsOfNy(asOfDisplay)} (New York)
+              </p>
+            </IonCardContent>
+          </IonCard>
+
+          <IonCard>
+            <IonCardHeader>
+              <IonCardTitle>Through next bonus</IonCardTitle>
+            </IonCardHeader>
+            <IonCardContent>
+              <div className="home-upcoming__row">
+                <span className="home-upcoming__label">Projected low</span>
+                <span className="home-upcoming__value">
+                  {formatCurrency(snapshot.projected_low_to_bonus.amount)} on{' '}
+                  {formatDateOnly(snapshot.projected_low_to_bonus.date)}
+                </span>
+              </div>
+              <div className="home-upcoming__row">
+                <span className="home-upcoming__label">Next bonus</span>
+                <span className="home-upcoming__value">{formatDateOnly(snapshot.next_bonus_date)}</span>
+              </div>
+            </IonCardContent>
+          </IonCard>
+
+          <IonCard>
+            <IonCardHeader>
+              <IonCardTitle>After next bonus</IonCardTitle>
+            </IonCardHeader>
+            <IonCardContent>
+              <div className="home-upcoming__row">
+                <span className="home-upcoming__label">Top-off needed</span>
+                <span className="home-upcoming__value">
+                  {formatCurrency(snapshot.topoff_needed_after_bonus)}
+                </span>
+              </div>
+              <div className="home-upcoming__row">
+                <span className="home-upcoming__label">Following bonus</span>
+                <span className="home-upcoming__value">
+                  {formatDateOnly(snapshot.following_bonus_date)}
+                </span>
+              </div>
+              <div className="home-upcoming__row">
+                <span className="home-upcoming__label">Low after top-off</span>
+                <span className="home-upcoming__value">
+                  {formatCurrency(snapshot.low_after_topoff.amount)} on{' '}
+                  {formatDateOnly(snapshot.low_after_topoff.date)}
+                </span>
+              </div>
+            </IonCardContent>
+          </IonCard>
+
+          <IonCard>
+            <IonCardHeader>
+              <IonCardTitle>Upcoming bills</IonCardTitle>
+            </IonCardHeader>
+            <IonCardContent style={{ padding: 0 }}>
+              {snapshot.bills.length === 0 ? (
+                <p className="ion-padding font-body">No bills in this snapshot.</p>
+              ) : (
+                <IonList lines="full">
+                  {snapshot.bills.map((bill) => (
+                    <IonItem key={`${bill.name}-${bill.next_date}`}>
+                      <IonLabel>
+                        <h2>{bill.name}</h2>
+                        <p>{bill.frequency}</p>
+                      </IonLabel>
+                      <IonNote slot="end" className="ion-text-end">
+                        <div>{formatCurrency(bill.amount)}</div>
+                        <div>{formatDateOnly(bill.next_date)}</div>
+                      </IonNote>
+                    </IonItem>
+                  ))}
+                </IonList>
+              )}
+            </IonCardContent>
+          </IonCard>
         </div>
       </IonContent>
     </IonPage>
