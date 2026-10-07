@@ -86,9 +86,11 @@ export async function GET(request: NextRequest) {
       patterns = [];
     }
 
+    const activePatterns = patterns.filter((p) => !p.inactive && !p.paused);
+
     // Calculate total monthly expenses
     let totalMonthly = 0;
-    for (const pattern of patterns) {
+    for (const pattern of activePatterns) {
       switch (pattern.frequency) {
         case "monthly":
           totalMonthly += pattern.amount;
@@ -138,7 +140,7 @@ export async function POST(request: NextRequest) {
     }
 
     const list = await loadRecurringList(user.id);
-    list.push(result.pattern!);
+    list.push({ ...result.pattern!, source: "manual", userEdited: true });
     await storeRecurringPatterns(user.id, list);
 
     // Calculate total monthly expenses
@@ -146,7 +148,8 @@ export async function POST(request: NextRequest) {
 
     console.log("calculating total monthly expenses");
 
-    for (const pattern of list) {
+    const activeList = list.filter((p) => !p.inactive && !p.paused);
+    for (const pattern of activeList) {
       switch (pattern.frequency) {
         case "monthly":
           totalMonthly += pattern.amount;
@@ -254,6 +257,11 @@ export async function PATCH(request: NextRequest) {
       }
       list[index].typicalDayOfMonth = d;
     }
+    if (b.paused !== undefined) {
+      list[index].paused = Boolean(b.paused);
+    }
+
+    list[index].userEdited = true;
 
     await storeRecurringPatterns(user.id, list);
     return NextResponse.json({ recurring: list });

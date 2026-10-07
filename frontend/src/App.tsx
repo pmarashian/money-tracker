@@ -24,8 +24,8 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
-import TellerCallback from "./pages/TellerCallback";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
+import { AppBackgroundProvider, useAppBackground } from "./hooks/useAppBackground";
 import ProtectedRoute from "./components/ProtectedRoute";
 import LoadingSpinner from "./components/LoadingSpinner";
 import logger from "./lib/logger";
@@ -135,27 +135,49 @@ const AppContent: React.FC = () => {
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/app/teller-callback"
-        element={
-          <ProtectedRoute>
-            <TellerCallback />
-          </ProtectedRoute>
-        }
-      />
       <Route path="/app" element={<Navigate to="/app/home" replace />} />
     </Routes>
+  );
+};
+
+const AppBackgroundLayer: React.FC = () => {
+  const location = useLocation();
+  const { backgroundSrc } = useAppBackground();
+  const isAppRoute = location.pathname.startsWith("/app");
+
+  if (!isAppRoute) return null;
+
+  return (
+    <div
+      className="app-route-background"
+      aria-hidden
+      style={
+        backgroundSrc
+          ? { backgroundImage: `url(${backgroundSrc})` }
+          : { backgroundImage: "none" }
+      }
+    />
   );
 };
 
 const MainLayout: React.FC = () => {
   const location = useLocation();
   const isAppRoute = location.pathname.startsWith("/app");
+  const { backgroundSrc } = useAppBackground();
+  const mainClass = [
+    isAppRoute ? "has-tab-bar" : undefined,
+    isAppRoute ? "app-main--with-bg" : undefined,
+    isAppRoute && !backgroundSrc ? "app-main--plain-black" : undefined,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
+    <>
+      <AppBackgroundLayer />
     <div
       id="main"
-      className={isAppRoute ? "has-tab-bar" : undefined}
+      className={mainClass || undefined}
       style={{
         flex: 1,
         height: "100%",
@@ -170,6 +192,7 @@ const MainLayout: React.FC = () => {
     >
       <AppContent />
     </div>
+    </>
   );
 };
 
@@ -194,10 +217,12 @@ const App: React.FC = () => {
       }}
     >
       <AuthProvider>
-        <RouterWrapper>
-          <MainLayout />
-          <TabBar />
-        </RouterWrapper>
+        <AppBackgroundProvider>
+          <RouterWrapper>
+            <MainLayout />
+            <TabBar />
+          </RouterWrapper>
+        </AppBackgroundProvider>
       </AuthProvider>
     </IonApp>
   );

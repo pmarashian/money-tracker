@@ -15,78 +15,35 @@ import {
   IonSpinner,
   IonText,
   IonToast,
-  IonSelect,
-  IonSelectOption,
 } from '@ionic/react';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiGet, apiPatch, apiPost } from '../lib/api';
+import { apiGet, apiPatch } from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
+import { useAppBackground } from '../hooks/useAppBackground';
+import { BACKGROUND_OPTIONS, type BackgroundId } from '../lib/appBackgrounds';
 
 interface UserSettings {
-  balance: number;
   paycheckAmount: number;
-  nextBonusDate: string;
-  bonusAmount?: number;
-  nextPaycheckDate?: string;
-  timezone?: string;
 }
-
-interface TellerInfo {
-  linked: boolean;
-  institutionName: string | null;
-  linkedAt: string | null;
-}
-
-/** Curated IANA timezones for payday and projection calculations */
-const TIMEZONE_OPTIONS: { value: string; label: string }[] = [
-  { value: '', label: 'Default' },
-  { value: 'America/New_York', label: 'Eastern (America/New_York)' },
-  { value: 'America/Chicago', label: 'Central (America/Chicago)' },
-  { value: 'America/Denver', label: 'Mountain (America/Denver)' },
-  { value: 'America/Phoenix', label: 'Arizona (America/Phoenix)' },
-  { value: 'America/Los_Angeles', label: 'Pacific (America/Los_Angeles)' },
-  { value: 'America/Anchorage', label: 'Alaska (America/Anchorage)' },
-  { value: 'Pacific/Honolulu', label: 'Hawaii (Pacific/Honolulu)' },
-  { value: 'UTC', label: 'UTC' },
-  { value: 'Europe/London', label: 'Europe/London' },
-  { value: 'Europe/Paris', label: 'Europe/Paris' },
-  { value: 'Europe/Berlin', label: 'Europe/Berlin' },
-  { value: 'Asia/Tokyo', label: 'Asia/Tokyo' },
-  { value: 'Australia/Sydney', label: 'Australia/Sydney' },
-];
 
 const DEFAULT_SETTINGS: UserSettings = {
-  balance: 0,
   paycheckAmount: 2000,
-  nextBonusDate: '',
-  bonusAmount: 0,
 };
 
 const Settings: React.FC = () => {
   const navigate = useNavigate();
   const { logout, changePassword } = useAuth();
-  const tellerConnectRef = useRef<{ open: () => void } | null>(null);
-  const tellerCallbacksRef = useRef<{
-    loadSettings: () => Promise<void>;
-    showToast: (msg: string, color: 'success' | 'danger') => void;
-    setConnectingBank: (v: boolean) => void;
-  } | null>(null);
+  const { backgroundId, setBackgroundId } = useAppBackground();
 
   const [settings, setSettings] = useState<UserSettings>({ ...DEFAULT_SETTINGS });
-  const [tellerInfo, setTellerInfo] = useState<TellerInfo>({ linked: false, institutionName: null, linkedAt: null });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [connectingBank, setConnectingBank] = useState(false);
-  const [refreshingBalance, setRefreshingBalance] = useState(false);
-  const [disconnectingBank, setDisconnectingBank] = useState(false);
-  const [tellerReady, setTellerReady] = useState(false);
 
   const [toastOpen, setToastOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastColor, setToastColor] = useState<'success' | 'danger'>('success');
 
-  // Password change state
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordChanging, setPasswordChanging] = useState(false);
@@ -102,92 +59,14 @@ const Settings: React.FC = () => {
     loadSettings();
   }, []);
 
-  // Fetch Teller applicationId and setup Teller Connect when script is loaded
-  useEffect(() => {
-    let cancelled = false;
-    let intervalId: ReturnType<typeof setInterval> | null = null;
-
-    (async () => {
-      const result = await apiGet<{ applicationId: string }>('/api/teller/connect-url');
-      if (cancelled || !result.ok || !result.data?.applicationId) return;
-
-      const applicationId = result.data.applicationId;
-
-      const trySetup = () => {
-        if (cancelled || !window.TellerConnect) return false;
-        try {
-          const instance = window.TellerConnect.setup({
-            applicationId,
-            products: ['balance'],
-            onSuccess: (enrollment) => {
-              const enrollmentId = enrollment.enrollment?.id;
-              const institutionName = enrollment.enrollment?.institution?.name;
-              if (!enrollment.accessToken || !enrollmentId) return;
-              apiPost('/api/teller/callback', {
-                access_token: enrollment.accessToken,
-                enrollment_id: enrollmentId,
-                institution_name: institutionName ?? undefined,
-              }).then((res) => {
-                const cb = tellerCallbacksRef.current;
-                cb?.setConnectingBank(false);
-                if (res.ok) {
-                  cb?.loadSettings();
-                  cb?.showToast('Bank linked successfully', 'success');
-                } else {
-                  cb?.showToast(res.error ?? 'Failed to save bank connection', 'danger');
-                }
-              });
-            },
-            onExit: () => {
-              tellerCallbacksRef.current?.setConnectingBank(false);
-            },
-          });
-          tellerConnectRef.current = instance;
-          setTellerReady(true);
-          return true;
-        } catch {
-          return false;
-        }
-      };
-
-      if (trySetup()) return;
-
-      intervalId = setInterval(() => {
-        if (trySetup() && intervalId) {
-          clearInterval(intervalId);
-          intervalId = null;
-        }
-      }, 200);
-    })();
-
-    return () => {
-      cancelled = true;
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, []);
-
   const loadSettings = async () => {
-    const result = await apiGet<UserSettings & { nextPaycheckDate?: string; teller?: TellerInfo }>('/api/settings');
+    const result = await apiGet<{ paycheckAmount?: number }>('/api/settings');
     if (result.ok && result.data) {
-      const data = result.data;
-      const { teller, ...settingsData } = data;
-      if (teller !== undefined) {
-        setTellerInfo({
-          linked: teller.linked,
-          institutionName: teller.institutionName ?? null,
-          linkedAt: teller.linkedAt ?? null,
-        });
-      }
-      const formattedDate = settingsData.nextBonusDate ? settingsData.nextBonusDate.split('T')[0] : '';
-      const nextPaycheckFormatted = settingsData.nextPaycheckDate ? settingsData.nextPaycheckDate.split('T')[0] : '';
-      setSettings({
-        ...DEFAULT_SETTINGS,
-        ...settingsData,
-        nextBonusDate: formattedDate || DEFAULT_SETTINGS.nextBonusDate,
-        nextPaycheckDate: nextPaycheckFormatted || undefined,
-        balance: typeof settingsData.balance === 'number' && !isNaN(settingsData.balance) ? settingsData.balance : DEFAULT_SETTINGS.balance,
-        timezone: typeof settingsData.timezone === 'string' ? settingsData.timezone : undefined,
-      });
+      const paycheckAmount =
+        typeof result.data.paycheckAmount === 'number' && !Number.isNaN(result.data.paycheckAmount)
+          ? result.data.paycheckAmount
+          : DEFAULT_SETTINGS.paycheckAmount;
+      setSettings({ paycheckAmount });
     } else if (!result.ok) {
       showToast(result.error || 'Failed to load settings', 'danger');
     }
@@ -195,109 +74,29 @@ const Settings: React.FC = () => {
   };
 
   const saveSettings = async () => {
-    if (!settings.nextBonusDate) {
-      showToast('Next bonus date is required', 'danger');
-      return;
-    }
-
     setSaving(true);
     const paycheckNum = Number(settings.paycheckAmount);
-    const payload: Record<string, unknown> = {
-      balance: Number(settings.balance) || 0,
-      paycheckAmount: !isNaN(paycheckNum) ? paycheckNum : 2000,
-      nextBonusDate: settings.nextBonusDate,
-    };
-    if (settings.nextPaycheckDate) {
-      payload.nextPaycheckDate = settings.nextPaycheckDate;
-    }
-    if (settings.timezone !== undefined) {
-      payload.timezone = settings.timezone && settings.timezone.trim() ? settings.timezone.trim() : '';
-    }
-    const result = await apiPatch<UserSettings & { nextPaycheckDate?: string; timezone?: string }>('/api/settings', payload);
-    if (result.ok && result.data) {
-      const updated = result.data;
-      const formattedDate = updated.nextBonusDate ? updated.nextBonusDate.split('T')[0] : '';
-      const nextPaycheckFormatted = updated.nextPaycheckDate ? updated.nextPaycheckDate.split('T')[0] : '';
-      setSettings({
-        ...DEFAULT_SETTINGS,
-        ...updated,
-        nextBonusDate: formattedDate,
-        nextPaycheckDate: nextPaycheckFormatted || undefined,
-        timezone: typeof updated.timezone === 'string' ? updated.timezone : undefined,
-      });
-      showToast('Settings saved successfully', 'success');
+    const result = await apiPatch('/api/settings', {
+      paycheckAmount: !Number.isNaN(paycheckNum) ? paycheckNum : 2000,
+    });
+    if (result.ok) {
+      showToast('Paycheck amount saved', 'success');
     } else {
       showToast(result.error || 'Failed to save settings', 'danger');
     }
     setSaving(false);
   };
 
-  const handleInputChange = (field: keyof UserSettings, value: string | number) => {
-    setSettings(prev => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  const handleConnectBank = () => {
-    if (tellerConnectRef.current) {
-      setConnectingBank(true);
-      tellerConnectRef.current.open();
-    } else if (!tellerReady) {
-      showToast('Bank connection is still loading. Try again in a moment.', 'danger');
-    } else {
-      showToast('Bank connection is not available.', 'danger');
-    }
-  };
-
-  const handleRefreshBalance = async () => {
-    setRefreshingBalance(true);
-    const result = await apiPost<{ balance: number }>('/api/teller/refresh-balance');
-    if (result.ok && result.data) {
-      setSettings(prev => ({ ...prev, balance: result.data!.balance }));
-      showToast('Balance updated from bank', 'success');
-      loadSettings();
-    } else {
-      showToast(result.error ?? 'Failed to refresh balance', 'danger');
-    }
-    setRefreshingBalance(false);
-  };
-
-  const handleDisconnectBank = async () => {
-    setDisconnectingBank(true);
-    const result = await apiPost('/api/teller/disconnect');
-    if (result.ok) {
-      setTellerInfo({ linked: false, institutionName: null, linkedAt: null });
-      showToast('Bank disconnected', 'success');
-    } else {
-      showToast(result.error ?? 'Failed to disconnect', 'danger');
-    }
-    setDisconnectingBank(false);
-  };
-
-  // Keep ref updated so Teller onSuccess/onExit can call current handlers
-  useEffect(() => {
-    tellerCallbacksRef.current = {
-      loadSettings,
-      showToast,
-      setConnectingBank,
-    };
-  }, [loadSettings, showToast]);
-
   const handlePasswordChange = async () => {
     setPasswordError('');
-
-    // Validation
     if (!newPassword) {
       setPasswordError('New password is required');
       return;
     }
-
     if (newPassword.length < 6) {
       setPasswordError('Password must be at least 6 characters long');
       return;
     }
-
     if (newPassword !== confirmPassword) {
       setPasswordError('Passwords do not match');
       return;
@@ -305,7 +104,6 @@ const Settings: React.FC = () => {
 
     setPasswordChanging(true);
     const result = await changePassword(newPassword);
-    
     if (result.success) {
       showToast('Password changed successfully', 'success');
       setNewPassword('');
@@ -315,7 +113,6 @@ const Settings: React.FC = () => {
       setPasswordError(result.error || 'Failed to change password');
       showToast(result.error || 'Failed to change password', 'danger');
     }
-    
     setPasswordChanging(false);
   };
 
@@ -342,244 +139,137 @@ const Settings: React.FC = () => {
       <IonContent>
         <div className="ion-padding">
           <p className="font-body" style={{ marginBottom: '1.25rem' }}>
-            Configure your financial settings to improve health projections.
+            Control panel for your projection inputs. Balances and forecasts come from your
+            assistant&apos;s snapshot pushes.
           </p>
 
-          {/* Financial settings */}
-          <section className="settings-section" aria-labelledby="settings-financial">
-            <IonCard className="settings-section-card settings-section-card--financial">
-              <IonCardHeader className="settings-section-header">
-                <IonCardTitle className="font-heading">Balance &amp; Income</IonCardTitle>
-              </IonCardHeader>
-              <IonCardContent>
-                <span className="settings-form-group__label">Bank connection</span>
-                <div className="settings-form-group" style={{ marginBottom: '1rem' }}>
-                  {tellerInfo.linked ? (
-                    <>
-                      <p className="font-body" style={{ marginBottom: '0.5rem' }}>
-                        Linked: {tellerInfo.institutionName || 'Bank'}
-                      </p>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                        <IonButton
-                          size="small"
-                          fill="outline"
-                          onClick={handleRefreshBalance}
-                          disabled={refreshingBalance}
-                          className="font-body"
-                        >
-                          {refreshingBalance ? (
-                            <>
-                              <IonSpinner slot="start" name="crescent" />
-                              Refreshing...
-                            </>
-                          ) : (
-                            'Refresh balance from bank'
-                          )}
-                        </IonButton>
-                        <IonButton
-                          size="small"
-                          fill="clear"
-                          color="medium"
-                          onClick={handleDisconnectBank}
-                          disabled={disconnectingBank}
-                          className="font-body"
-                        >
-                          {disconnectingBank ? 'Disconnecting...' : 'Disconnect bank'}
-                        </IonButton>
-                      </div>
-                    </>
-                  ) : (
-                    <IonButton
-                      size="default"
-                      fill="outline"
-                      onClick={handleConnectBank}
-                      disabled={connectingBank}
-                      className="font-body"
+          <IonCard className="settings-section-card">
+            <IonCardHeader>
+              <IonCardTitle className="font-heading">Background</IonCardTitle>
+            </IonCardHeader>
+            <IonCardContent>
+              <p className="font-body" style={{ marginBottom: '0.5rem' }}>
+                Full-page pixel art behind the app tabs. Scenery anchors to the bottom of the screen.
+              </p>
+              <div className="background-picker" role="listbox" aria-label="Background">
+                {BACKGROUND_OPTIONS.map((option) => {
+                  const selected = backgroundId === option.id;
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      role="option"
+                      aria-selected={selected}
+                      className={`background-picker__option${selected ? ' background-picker__option--selected' : ''}`}
+                      onClick={() => setBackgroundId(option.id as BackgroundId)}
                     >
-                      {connectingBank ? (
-                        <>
-                          <IonSpinner slot="start" name="crescent" />
-                          Opening...
-                        </>
+                      {option.src ? (
+                        <div
+                          className="background-picker__thumb"
+                          style={{ backgroundImage: `url(${option.src})` }}
+                        />
                       ) : (
-                            'Connect bank account'
-                          )}
-                    </IonButton>
-                  )}
-                </div>
-                <span className="settings-form-group__label">Balance &amp; income</span>
-                <div className="settings-form-group">
-                  <IonItem>
-                    <IonLabel position="stacked" className="font-body">
-                      Your timezone (for payday and projections)
-                    </IonLabel>
-                    <IonSelect
-                      value={settings.timezone ?? ''}
-                      placeholder="Default"
-                      onIonChange={(e) => handleInputChange('timezone', e.detail.value ?? '')}
-                      interface="popover"
-                      interfaceOptions={{ cssClass: 'timezone-select-popover' }}
-                      className="font-body"
-                    >
-                      {TIMEZONE_OPTIONS.map((opt) => (
-                        <IonSelectOption key={opt.value || 'default'} value={opt.value}>
-                          {opt.label}
-                        </IonSelectOption>
-                      ))}
-                    </IonSelect>
-                  </IonItem>
-                  <IonItem>
-                    <IonLabel position="stacked" className="font-body">
-                      Current balance ($)
-                    </IonLabel>
-                    <IonInput
-                      type="number"
-                      inputMode="decimal"
-                      value={settings.balance}
-                      placeholder="0.00"
-                      onIonInput={(e) =>
-                        handleInputChange('balance', parseFloat((e.detail.value as string) || '0') || 0)
-                      }
-                      step="0.01"
-                    />
-                  </IonItem>
-                  <IonItem>
-                    <IonLabel position="stacked" className="font-body">
-                      Paycheck amount ($)
-                    </IonLabel>
-                    <IonInput
-                      type="number"
-                      inputMode="decimal"
-                      value={settings.paycheckAmount}
-                      placeholder="2000.00"
-                      onIonInput={(e) =>
-                        handleInputChange('paycheckAmount', parseFloat((e.detail.value as string) || '0') || 0)
-                      }
-                      step="0.01"
-                      min="0"
-                    />
-                  </IonItem>
-                  <IonItem>
-                    <IonLabel position="stacked" className="font-body">
-                      Next paycheck date (optional)
-                    </IonLabel>
-                    <IonInput
-                      type="date"
-                      value={settings.nextPaycheckDate || ''}
-                      onIonChange={(e) => handleInputChange('nextPaycheckDate', e.detail.value || '')}
-                    />
-                  </IonItem>
-                </div>
+                        <div className="background-picker__thumb background-picker__thumb--none">Black</div>
+                      )}
+                      <span className="background-picker__label font-body">{option.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </IonCardContent>
+          </IonCard>
 
-                <span className="settings-form-group__label">Bonus</span>
-                <div className="settings-form-group">
-                  <IonItem>
-                    <IonLabel position="stacked" className="font-body">
-                      Next bonus date
-                    </IonLabel>
-                    <IonInput
-                      type="date"
-                      value={settings.nextBonusDate}
-                      onIonChange={(e) => handleInputChange('nextBonusDate', e.detail.value || '')}
-                    />
-                  </IonItem>
-                </div>
+          <IonCard className="settings-section-card">
+            <IonCardHeader>
+              <IonCardTitle className="font-heading">Income</IonCardTitle>
+            </IonCardHeader>
+            <IonCardContent>
+              <IonItem>
+                <IonLabel position="stacked" className="font-body">
+                  Paycheck amount ($)
+                </IonLabel>
+                <IonInput
+                  type="number"
+                  inputMode="decimal"
+                  value={settings.paycheckAmount}
+                  placeholder="2000.00"
+                  onIonInput={(e) =>
+                    setSettings({
+                      paycheckAmount: parseFloat((e.detail.value as string) || '0') || 0,
+                    })
+                  }
+                  step="0.01"
+                  min="0"
+                />
+              </IonItem>
+              <IonButton
+                expand="block"
+                className="ion-margin-top"
+                onClick={saveSettings}
+                disabled={saving}
+              >
+                {saving ? 'Saving...' : 'Save paycheck amount'}
+              </IonButton>
+            </IonCardContent>
+          </IonCard>
 
-                <div className="settings-primary-action">
-                  <IonButton
-                    expand="block"
-                    size="default"
-                    onClick={saveSettings}
-                    disabled={saving}
-                    className="font-body"
-                  >
-                    {saving ? 'Saving...' : 'Save settings'}
-                  </IonButton>
-                </div>
-              </IonCardContent>
-            </IonCard>
-          </section>
-
-          {/* Account */}
-          <section className="settings-section" aria-labelledby="settings-account">
-            <IonCard className="settings-section-card settings-section-card--account">
-              <IonCardHeader className="settings-section-header">
-                <IonCardTitle className="font-heading">Account Settings</IonCardTitle>
-              </IonCardHeader>
-              <IonCardContent>
-                <span className="settings-form-group__label">Change Password</span>
-                <div className="settings-form-group">
-                  <IonItem>
-                    <IonLabel position="stacked" className="font-body">
-                      New Password
-                    </IonLabel>
-                    <IonInput
-                      type="password"
-                      value={newPassword}
-                      placeholder="Enter new password"
-                      onIonInput={(e) => setNewPassword(e.detail.value ?? '')}
-                      disabled={passwordChanging}
-                    />
-                  </IonItem>
-                  <IonItem>
-                    <IonLabel position="stacked" className="font-body">
-                      Confirm Password
-                    </IonLabel>
-                    <IonInput
-                      type="password"
-                      value={confirmPassword}
-                      placeholder="Confirm new password"
-                      onIonInput={(e) => setConfirmPassword(e.detail.value ?? '')}
-                      disabled={passwordChanging}
-                    />
-                  </IonItem>
-                  {passwordError && (
-                    <IonText color="danger" className="font-body" style={{ display: 'block', marginTop: '0.5rem', paddingLeft: '1rem' }}>
-                      {passwordError}
-                    </IonText>
-                  )}
-                </div>
-                <div className="settings-primary-action" style={{ marginTop: '1rem' }}>
-                  <IonButton
-                    expand="block"
-                    size="default"
-                    onClick={handlePasswordChange}
-                    disabled={
-                      passwordChanging ||
-                      !newPassword ||
-                      !confirmPassword ||
-                      newPassword.length < 6 ||
-                      newPassword !== confirmPassword
-                    }
-                    className="font-body"
-                  >
-                    {passwordChanging ? (
-                      <>
-                        <IonSpinner slot="start" name="crescent" />
-                        Changing Password...
-                      </>
-                    ) : (
-                      'Change Password'
-                    )}
-                  </IonButton>
-                </div>
-                <div className="settings-primary-action" style={{ marginTop: '1rem' }}>
-                  <IonButton
-                    expand="block"
-                    size="default"
-                    color="danger"
-                    onClick={async () => {
-                      await logout();
-                      navigate('/login');
-                    }}
-                    className="font-body"
-                  >
-                    Logout
-                  </IonButton>
-                </div>
-              </IonCardContent>
-            </IonCard>
-          </section>
+          <IonCard className="settings-section-card settings-section-card--account">
+            <IonCardHeader>
+              <IonCardTitle className="font-heading">Account</IonCardTitle>
+            </IonCardHeader>
+            <IonCardContent>
+              <IonItem>
+                <IonLabel position="stacked" className="font-body">New password</IonLabel>
+                <IonInput
+                  type="password"
+                  value={newPassword}
+                  placeholder="Enter new password"
+                  onIonInput={(e) => setNewPassword(e.detail.value ?? '')}
+                  disabled={passwordChanging}
+                />
+              </IonItem>
+              <IonItem>
+                <IonLabel position="stacked" className="font-body">Confirm password</IonLabel>
+                <IonInput
+                  type="password"
+                  value={confirmPassword}
+                  placeholder="Confirm new password"
+                  onIonInput={(e) => setConfirmPassword(e.detail.value ?? '')}
+                  disabled={passwordChanging}
+                />
+              </IonItem>
+              {passwordError && (
+                <IonText color="danger" className="font-body" style={{ display: 'block', marginTop: '0.5rem' }}>
+                  {passwordError}
+                </IonText>
+              )}
+              <IonButton
+                expand="block"
+                className="ion-margin-top"
+                onClick={handlePasswordChange}
+                disabled={
+                  passwordChanging ||
+                  !newPassword ||
+                  !confirmPassword ||
+                  newPassword.length < 6 ||
+                  newPassword !== confirmPassword
+                }
+              >
+                {passwordChanging ? 'Changing password...' : 'Change password'}
+              </IonButton>
+              <IonButton
+                expand="block"
+                color="danger"
+                className="ion-margin-top"
+                onClick={async () => {
+                  await logout();
+                  navigate('/login');
+                }}
+              >
+                Logout
+              </IonButton>
+            </IonCardContent>
+          </IonCard>
         </div>
 
         <IonToast
