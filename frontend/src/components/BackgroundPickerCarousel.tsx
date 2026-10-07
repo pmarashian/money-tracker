@@ -1,6 +1,6 @@
-import { IonButton } from '@ionic/react';
 import { useCallback, useEffect, useRef, useState, type FC } from 'react';
 import { BACKGROUND_OPTIONS, type BackgroundId } from '../lib/appBackgrounds';
+import { RrCmdButton } from './rr/RrCmdButton';
 
 interface BackgroundPickerCarouselProps {
   backgroundId: BackgroundId;
@@ -17,7 +17,7 @@ export const BackgroundPickerCarousel: FC<BackgroundPickerCarouselProps> = ({
     Math.max(0, BACKGROUND_OPTIONS.findIndex((o) => o.id === backgroundId))
   );
 
-  const scrollToIndex = useCallback((index: number, behavior: ScrollBehavior = 'smooth') => {
+  const scrollToIndex = useCallback((index: number, behavior: ScrollBehavior = 'auto') => {
     const track = trackRef.current;
     const slide = slideRefs.current[index];
     if (!track || !slide) return;
@@ -91,9 +91,10 @@ export const BackgroundPickerCarousel: FC<BackgroundPickerCarouselProps> = ({
                 ) : (
                   <div className="bg-carousel__preview-bg bg-carousel__preview-bg--none" aria-hidden />
                 )}
-                <div className="bg-carousel__mock home-stat-card home-stat-card--hero home-stat-card--hero-ok">
-                  <div className="home-stat-card__label">Balance before bonus</div>
-                  <div className="home-stat-card__value">$4,250</div>
+                <div className="rr-win rr-win--dq bg-carousel__mock-win">
+                  <span className="rr-tag">BALANCE</span>
+                  <p className="rr-hero-label">Before next bonus</p>
+                  <p className="rr-hero-value">$4,250</p>
                 </div>
                 {isApplied && (
                   <span className="bg-carousel__applied" aria-label="Currently in use">✓</span>
@@ -118,16 +119,11 @@ export const BackgroundPickerCarousel: FC<BackgroundPickerCarouselProps> = ({
         ))}
       </div>
 
-      <p className="bg-carousel__name font-heading">{previewOption?.label ?? ''}</p>
+      <p className="bg-carousel__name">{previewOption?.label ?? ''}</p>
 
-      <IonButton
-        expand="block"
-        className="btn-retro btn-retro--primary bg-carousel__use-btn"
-        onClick={handleUseBackground}
-        disabled={previewSelected}
-      >
-        {previewSelected ? '✓ In use' : 'Use this background'}
-      </IonButton>
+      <RrCmdButton onClick={handleUseBackground} disabled={previewSelected} showCursor={!previewSelected}>
+        {previewSelected ? 'In use' : 'Use this background'}
+      </RrCmdButton>
     </div>
   );
 };

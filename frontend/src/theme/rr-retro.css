@@ -1,0 +1,524 @@
+/* Retro Runner DQ kit — ported for Money Tracker (see rr-kit/NOTES.md) */
+
+@font-face {
+  font-family: "Press Start 2P";
+  src: url("/rr-retro/assets/PressStart2P-Regular.ttf") format("truetype");
+  font-display: block;
+}
+
+:root {
+  --c-black: #000000;
+  --c-white: #fcfcfc;
+  --c-grey: #bcbcbc;
+  --c-dgrey: #7c7c7c;
+  --c-red: #d82800;
+  --c-red-hi: #f87858;
+  --c-gold: #f8b800;
+  --c-green: #58d854;
+  --fs-s: 8px;
+  --lh-s: 12px;
+  --fs-m: 12px;
+  --lh-m: 18px;
+  --fs-l: 16px;
+  --lh-l: 24px;
+  --gap: 6px;
+  --edge: 6px;
+  --col-max: 430px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --rr-cursor-dq: url("/rr-retro/assets/ui/cursor_dq.png");
+}
+
+.rr-app,
+.rr-app ion-content,
+.rr-modal {
+  font-family: "Press Start 2P", monospace;
+  font-size: var(--fs-m);
+  line-height: var(--lh-m);
+  color: var(--c-white);
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: grayscale;
+  font-smooth: never;
+  text-rendering: optimizeSpeed;
+  -webkit-text-size-adjust: 100%;
+}
+
+.rr-app img,
+.rr-app .px,
+.rr-modal img {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.rr-fs-s { font-size: var(--fs-s); line-height: var(--lh-s); }
+.rr-fs-m { font-size: var(--fs-m); line-height: var(--lh-m); }
+.rr-fs-l { font-size: var(--fs-l); line-height: var(--lh-l); }
+.rr-gold { color: var(--c-gold); }
+.rr-label { font-size: var(--fs-s); line-height: var(--lh-s); color: var(--c-grey); letter-spacing: 1px; }
+.rr-dim { color: var(--c-dgrey); }
+.rr-danger { color: var(--c-red-hi); }
+
+.rr-win {
+  --bw: 3px;
+  --win-bg: #000020;
+  --win-border: var(--c-white);
+  position: relative;
+  isolation: isolate;
+  padding: calc(var(--bw) + 8px) calc(var(--bw) + 10px);
+  margin-bottom: var(--gap);
+}
+
+.rr-win::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--win-bg);
+  border: var(--bw) solid var(--win-border);
+  clip-path: polygon(
+    var(--bw) 0,
+    calc(100% - var(--bw)) 0,
+    calc(100% - var(--bw)) var(--bw),
+    100% var(--bw),
+    100% calc(100% - var(--bw)),
+    calc(100% - var(--bw)) calc(100% - var(--bw)),
+    calc(100% - var(--bw)) 100%,
+    var(--bw) 100%,
+    var(--bw) calc(100% - var(--bw)),
+    0 calc(100% - var(--bw)),
+    0 var(--bw),
+    var(--bw) var(--bw)
+  );
+}
+
+.rr-win--dq {
+  --bw: 3px;
+  --win-bg: #000020;
+  --win-border: var(--c-white);
+}
+
+.rr-tag {
+  position: absolute;
+  top: -9px;
+  left: 12px;
+  padding: 3px 6px 2px;
+  font-size: var(--fs-s);
+  line-height: var(--lh-s);
+  color: var(--c-gold);
+  background: var(--c-black);
+  border: 3px solid var(--c-white);
+  letter-spacing: 1px;
+  z-index: 1;
+  max-width: calc(100% - 24px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+}
+
+.rr-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.rr-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.rr-field:last-child {
+  margin-bottom: 0;
+}
+
+.rr-field__label {
+  font-size: var(--fs-m);
+  line-height: var(--lh-m);
+  color: var(--c-grey);
+}
+
+.rr-input {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: var(--fs-m);
+  line-height: var(--lh-m);
+  color: var(--c-white);
+  background: var(--c-black);
+  border: 3px solid var(--c-white);
+  border-radius: 0;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.rr-input::placeholder {
+  color: var(--c-dgrey);
+  font-size: var(--fs-s);
+  line-height: var(--lh-s);
+}
+
+.rr-cursor {
+  flex: none;
+  visibility: hidden;
+  image-rendering: pixelated;
+}
+
+.rr-cursor--dq {
+  width: 8px;
+  height: 14px;
+  content: normal;
+}
+
+.rr-cmd-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.rr-cmd-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 4px;
+  font: inherit;
+  font-size: var(--fs-m);
+  line-height: var(--lh-m);
+  color: var(--c-white);
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  text-align: left;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.rr-cmd-item + .rr-cmd-item {
+  border-top: 2px dotted #303060;
+}
+
+.rr-cmd-item[aria-selected="true"] > .rr-cursor,
+.rr-cmd-item.rr-cmd-item--active > .rr-cmd-item__cursor {
+  visibility: visible;
+}
+
+.rr-cmd-item--danger {
+  color: var(--c-red-hi);
+}
+
+.rr-cmd-item--danger[aria-selected="true"] {
+  background: #280808;
+  outline: 2px solid var(--c-red);
+}
+
+.rr-cmd-item[aria-selected="true"]:not(.rr-cmd-item--danger) {
+  background: #101040;
+  outline: 2px solid var(--c-white);
+}
+
+.rr-cmd-item:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.rr-cmd-item__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.rr-menu {
+  border: 3px solid var(--c-white);
+  background: var(--c-black);
+  padding: 2px;
+}
+
+.rr-menu .rr-cmd-item {
+  min-height: 44px;
+  max-height: 44px;
+  padding: 0 8px;
+}
+
+.rr-lead {
+  margin: 0 0 var(--gap);
+  font-size: var(--fs-m);
+  line-height: var(--lh-m);
+  color: var(--c-grey);
+}
+
+.rr-badge {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 2px 4px;
+  font-size: var(--fs-s);
+  line-height: var(--lh-s);
+  border: 2px solid var(--c-dgrey);
+  color: var(--c-grey);
+  vertical-align: middle;
+}
+
+.rr-badge--edited {
+  border-color: var(--c-gold);
+  color: var(--c-gold);
+}
+
+/* Ionic: no sheet slide, instant modal */
+ion-modal.rr-modal {
+  --backdrop-opacity: 0.85;
+}
+
+ion-modal.rr-modal::part(content) {
+  background: var(--c-black);
+}
+
+ion-modal.rr-modal .modal-wrapper {
+  transform: none !important;
+  animation: none !important;
+  transition: none !important;
+}
+
+.rr-app ion-toolbar {
+  --background: #000020;
+  --color: var(--c-white);
+  --border-color: var(--c-white);
+  --min-height: 44px;
+}
+
+.rr-app ion-title {
+  font-family: "Press Start 2P", monospace !important;
+  font-size: var(--fs-l) !important;
+  line-height: var(--lh-l) !important;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.rr-app ion-content {
+  --padding-start: var(--edge);
+  --padding-end: var(--edge);
+  --padding-top: var(--gap);
+  --padding-bottom: var(--gap);
+}
+
+.rr-modal-toolbar {
+  padding: calc(var(--safe-top) + 8px) var(--edge) 8px;
+}
+
+.rr-modal-toolbar .rr-cmd-item {
+  min-height: 44px;
+  padding-left: 8px;
+}
+
+.expenses-page__add-gap {
+  margin-bottom: var(--gap);
+}
+
+.mt-expense__amount {
+  color: var(--c-gold);
+  font-size: var(--fs-l);
+  line-height: var(--lh-l);
+  text-align: right;
+}
+
+.mt-expense__name {
+  font-size: var(--fs-m);
+  line-height: var(--lh-m);
+}
+
+.mt-expense__schedule {
+  margin: 6px 0 8px;
+  font-size: var(--fs-s);
+  line-height: var(--lh-s);
+  color: var(--c-grey);
+}
+
+.home-hero-win .rr-hero-value {
+  margin: 8px 0 0;
+  font-size: var(--fs-l);
+  line-height: var(--lh-l);
+  color: var(--c-gold);
+}
+
+.home-hero-win .rr-hero-label {
+  margin: 4px 0 0;
+  font-size: var(--fs-s);
+  line-height: var(--lh-s);
+  color: var(--c-grey);
+}
+
+.bg-carousel__preview {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 390 / 844;
+  max-height: min(52vh, 22rem);
+  margin: 0 auto;
+  overflow: hidden;
+  background: #000;
+}
+
+.bg-carousel__preview-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center bottom;
+  image-rendering: pixelated;
+}
+
+.bg-carousel__mock-win {
+  position: absolute;
+  top: 14%;
+  left: 8%;
+  right: 8%;
+  padding: calc(3px + 6px) calc(3px + 8px);
+}
+
+.bg-carousel__track {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding: 4px 12% 8px;
+  scrollbar-width: none;
+}
+
+.bg-carousel__slide {
+  flex: 0 0 76%;
+  max-width: 17.5rem;
+  scroll-snap-align: center;
+}
+
+.bg-carousel__dots {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin: 8px 0;
+}
+
+.bg-carousel__dot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: 2px solid var(--c-white);
+  background: var(--c-black);
+}
+
+.bg-carousel__dot--active {
+  background: var(--c-gold);
+  border-color: var(--c-gold);
+}
+
+.bg-carousel__name {
+  text-align: center;
+  font-size: var(--fs-m);
+  margin: 0 0 8px;
+  color: var(--c-gold);
+}
+
+.ion-alert.rr-alert .alert-wrapper {
+  border-radius: 0 !important;
+  border: 3px solid var(--c-white);
+  background: #000020 !important;
+  font-family: "Press Start 2P", monospace;
+  box-shadow: none !important;
+}
+
+.ion-alert.rr-alert .alert-title,
+.ion-alert.rr-alert .alert-message,
+.ion-alert.rr-alert .alert-button {
+  font-family: "Press Start 2P", monospace !important;
+  font-size: var(--fs-m) !important;
+  line-height: var(--lh-m) !important;
+  color: var(--c-white) !important;
+}
+
+.ion-alert.rr-alert .alert-button[role='destructive'],
+.ion-alert.rr-alert .alert-button.alert-button-role-destructive {
+  color: var(--c-red-hi) !important;
+}
+
+.mt-expense__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mt-expense--paused {
+  opacity: 0.55;
+}
+
+.mt-expense__actions {
+  margin-top: 4px;
+}
+
+.expenses-list .rr-win {
+  margin-bottom: 0;
+}
+
+.expense-form-modal__body {
+  padding: var(--edge);
+  padding-top: calc(var(--safe-top) + var(--gap));
+  padding-bottom: calc(var(--safe-bottom) + var(--gap));
+}
+
+.expense-form-modal__actions {
+  margin-top: var(--gap);
+}
+
+.rr-app .home-snapshot {
+  padding: var(--edge);
+}
+
+.rr-app .home-snapshot__status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: var(--gap);
+  min-height: 44px;
+}
+
+.rr-app .home-snapshot__status-label {
+  font-size: var(--fs-m);
+  line-height: var(--lh-m);
+  color: var(--c-grey);
+}
+
+.rr-app .home-snapshot__status-badge {
+  font-size: var(--fs-s);
+  line-height: var(--lh-s);
+  padding: 6px 8px;
+  border: 2px solid var(--c-white);
+  background: var(--c-black);
+}
+
+.rr-app .home-snapshot__status--ok {
+  color: var(--c-green);
+  border-color: var(--c-green);
+}
+
+.rr-app .home-snapshot__status--warn {
+  color: var(--c-gold);
+  border-color: var(--c-gold);
+}
+
+.rr-app .home-snapshot__updated {
+  margin: var(--gap) 0 0;
+  text-align: center;
+  color: var(--c-dgrey);
+}
+
+.rr-app ion-spinner {
+  --color: var(--c-gold);
+}
+
+@media (max-height: 700px) {
+  .rr-win {
+    padding: calc(3px + 6px) calc(3px + 8px);
+  }
+}

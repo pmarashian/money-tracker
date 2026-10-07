@@ -4,7 +4,6 @@ import {
   IonPage,
   IonTitle,
   IonToolbar,
-  IonButton,
   IonSpinner,
   IonToast,
 } from '@ionic/react';
@@ -14,8 +13,9 @@ import { apiGet, apiPatch } from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
 import { useAppBackground } from '../hooks/useAppBackground';
 import { BackgroundPickerCarousel } from '../components/BackgroundPickerCarousel';
-import { NesField } from '../components/nes/NesField';
-import { NesPanel } from '../components/nes/NesPanel';
+import { RrWin } from '../components/rr/RrWin';
+import { RrField } from '../components/rr/RrField';
+import { RrCmdButton } from '../components/rr/RrCmdButton';
 import type { BackgroundId } from '../lib/appBackgrounds';
 
 interface UserSettings {
@@ -113,40 +113,40 @@ const Settings: React.FC = () => {
 
   if (loading) {
     return (
-      <IonPage className="nes-screen">
+      <IonPage className="rr-app">
         <IonContent className="ion-padding ion-text-center">
           <IonSpinner name="crescent" />
-          <p className="nes-lead">Loading settings...</p>
+          <p className="rr-lead">Loading settings...</p>
         </IonContent>
       </IonPage>
     );
   }
 
   return (
-    <IonPage className="nes-screen">
-      <IonHeader className="nes-screen__header">
-        <IonToolbar className="nes-toolbar">
-          <IonTitle className="nes-toolbar__title">Settings</IonTitle>
+    <IonPage className="rr-app">
+      <IonHeader>
+        <IonToolbar>
+          <IonTitle>Settings</IonTitle>
         </IonToolbar>
       </IonHeader>
       <IonContent>
-        <div className="ion-padding">
-          <p className="nes-lead">
+        <div className="rr-stack">
+          <p className="rr-lead">
             Control panel for projection inputs. Balances come from snapshot pushes.
           </p>
 
-          <NesPanel title="Background">
-            <p className="nes-lead" style={{ marginBottom: 0 }}>
+          <RrWin tag="BACKGROUND">
+            <p className="rr-label" style={{ marginBottom: 8 }}>
               Pixel art behind tabs. Scenery anchors to the bottom.
             </p>
             <BackgroundPickerCarousel
               backgroundId={backgroundId}
               onSelect={(id: BackgroundId) => setBackgroundId(id)}
             />
-          </NesPanel>
+          </RrWin>
 
-          <NesPanel title="Income">
-            <NesField
+          <RrWin tag="INCOME">
+            <RrField
               label="Paycheck amount ($)"
               inputProps={{
                 id: 'paycheck-amount',
@@ -162,18 +162,13 @@ const Settings: React.FC = () => {
                   }),
               }}
             />
-            <IonButton
-              expand="block"
-              className="btn-retro btn-retro--primary"
-              onClick={saveSettings}
-              disabled={saving}
-            >
+            <RrCmdButton onClick={saveSettings} disabled={saving} showCursor={!saving}>
               {saving ? 'Saving...' : 'Save paycheck'}
-            </IonButton>
-          </NesPanel>
+            </RrCmdButton>
+          </RrWin>
 
-          <NesPanel title="Account">
-            <NesField
+          <RrWin tag="ACCOUNT">
+            <RrField
               label="New password"
               inputProps={{
                 id: 'new-password',
@@ -184,7 +179,7 @@ const Settings: React.FC = () => {
                 onChange: (e) => setNewPassword(e.target.value),
               }}
             />
-            <NesField
+            <RrField
               label="Confirm password"
               inputProps={{
                 id: 'confirm-password',
@@ -195,10 +190,8 @@ const Settings: React.FC = () => {
                 onChange: (e) => setConfirmPassword(e.target.value),
               }}
             />
-            {passwordError && <p className="nes-error">{passwordError}</p>}
-            <IonButton
-              expand="block"
-              className="btn-retro btn-retro--primary"
+            {passwordError && <p className="rr-danger rr-fs-m">{passwordError}</p>}
+            <RrCmdButton
               onClick={handlePasswordChange}
               disabled={
                 passwordChanging ||
@@ -209,18 +202,17 @@ const Settings: React.FC = () => {
               }
             >
               {passwordChanging ? 'Changing...' : 'Change password'}
-            </IonButton>
-            <IonButton
-              expand="block"
-              className="btn-retro btn-retro--danger"
+            </RrCmdButton>
+            <RrCmdButton
+              variant="danger"
               onClick={async () => {
                 await logout();
                 navigate('/login');
               }}
             >
               Logout
-            </IonButton>
-          </NesPanel>
+            </RrCmdButton>
+          </RrWin>
         </div>
 
         <IonToast
