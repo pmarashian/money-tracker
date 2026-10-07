@@ -92,6 +92,56 @@ ion-page ion-content {
   line-height: 1.4;
 }
 
+/* Home snapshot — large figures, muted labels */
+.home-snapshot__card {
+  margin-top: 0.5rem;
+}
+
+.home-snapshot__stale {
+  margin-bottom: 0.75rem;
+}
+
+.home-snapshot__status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.home-stat {
+  margin-bottom: 1.25rem;
+}
+
+.home-stat--primary .home-stat__value {
+  font-size: 2.35rem;
+}
+
+.home-stat__label {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--ion-color-medium);
+  margin-bottom: 0.25rem;
+}
+
+.home-stat__value {
+  font-family: var(--font-heading);
+  font-size: 1.65rem;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--ion-text-color);
+}
+
+.home-snapshot__updated {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--ion-color-medium);
+  margin: 0.5rem 0 0;
+  line-height: 1.4;
+}
+
 .home-upcoming .home-upcoming__row {
   display: flex;
   align-items: center;

@@ -11,11 +11,7 @@ import {
   IonCardContent,
   IonSpinner,
   IonText,
-  IonList,
-  IonItem,
-  IonLabel,
   IonBadge,
-  IonNote,
 } from '@ionic/react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -56,6 +52,17 @@ interface SnapshotResponse {
   stale: boolean;
 }
 
+const Stat: React.FC<{ label: string; value: string; primary?: boolean }> = ({
+  label,
+  value,
+  primary,
+}) => (
+  <div className={`home-stat${primary ? ' home-stat--primary' : ''}`}>
+    <div className="home-stat__label">{label}</div>
+    <div className="home-stat__value">{value}</div>
+  </div>
+);
+
 const Home: React.FC = () => {
   const location = useLocation();
   const { user, loading: authLoading } = useAuth();
@@ -89,7 +96,7 @@ const Home: React.FC = () => {
 
   const formatDateOnly = (dateStr: string) => {
     const d = parseDateOnlyAsLocal(dateStr);
-    return d ? d.toLocaleDateString('en-US', { timeZone: NY_TZ }) : dateStr;
+    return d ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : dateStr;
   };
 
   const formatAsOfNy = (iso: string) => {
@@ -180,7 +187,7 @@ const Home: React.FC = () => {
             <IonCardContent>
               <p className="font-body">
                 Your assistant has not pushed a financial snapshot yet. Once the first push
-                lands, balances and bills will show here.
+                lands, your key balances will show here.
               </p>
             </IonCardContent>
           </IonCard>
@@ -190,6 +197,7 @@ const Home: React.FC = () => {
   }
 
   const asOfDisplay = snapshotResponse?.as_of ?? snapshot.as_of;
+  const showTopoffNow = snapshot.topoff_needed_now > 0;
 
   return (
     <IonPage>
@@ -199,9 +207,9 @@ const Home: React.FC = () => {
         </IonToolbar>
       </IonHeader>
       <IonContent>
-        <div className="ion-padding">
+        <div className="ion-padding home-snapshot">
           {snapshotResponse?.stale && (
-            <IonCard color="warning">
+            <IonCard color="warning" className="home-snapshot__stale">
               <IonCardContent>
                 <IonText>
                   <p className="font-body">
@@ -213,98 +221,39 @@ const Home: React.FC = () => {
             </IonCard>
           )}
 
-          <IonCard className="home-hero" color={statusColor(snapshot.status)}>
+          <IonCard className="home-snapshot__card">
             <IonCardContent>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="home-hero__balance-label">Status</span>
-                <IonBadge color={statusColor(snapshot.status)} style={{ fontSize: '1rem', padding: '8px 12px' }}>
-                  {statusLabel(snapshot.status)}
-                </IonBadge>
+              <div className="home-snapshot__status-row">
+                <span className="home-stat__label">Status</span>
+                <IonBadge color={statusColor(snapshot.status)}>{statusLabel(snapshot.status)}</IonBadge>
               </div>
-              {snapshot.status === 'needs_topoff' && snapshot.topoff_needed_now > 0 && (
-                <div className="home-hero__balance" style={{ marginTop: '0.75rem' }}>
-                  <span className="home-hero__balance-label">Add now</span>
-                  <span className="home-hero__balance-value">{formatCurrency(snapshot.topoff_needed_now)}</span>
-                </div>
+
+              <Stat
+                label="Chase available"
+                value={formatCurrency(snapshot.current_available_balance)}
+                primary
+              />
+
+              {showTopoffNow && (
+                <Stat
+                  label={`Top off by ${formatDateOnly(snapshot.projected_low_to_bonus.date)}`}
+                  value={formatCurrency(snapshot.topoff_needed_now)}
+                />
               )}
-              <p className="home-hero__supporting" style={{ marginTop: '0.75rem' }}>
-                Available: {formatCurrency(snapshot.current_available_balance)}
-              </p>
-              <p className="home-hero__supporting">
+
+              <Stat
+                label={`Projected low · ${formatDateOnly(snapshot.projected_low_to_bonus.date)}`}
+                value={formatCurrency(snapshot.projected_low_to_bonus.amount)}
+              />
+
+              <Stat
+                label="Next bonus"
+                value={formatDateOnly(snapshot.next_bonus_date)}
+              />
+
+              <p className="home-snapshot__updated">
                 Updated {formatAsOfNy(asOfDisplay)} (New York)
               </p>
-            </IonCardContent>
-          </IonCard>
-
-          <IonCard>
-            <IonCardHeader>
-              <IonCardTitle>Through next bonus</IonCardTitle>
-            </IonCardHeader>
-            <IonCardContent>
-              <div className="home-upcoming__row">
-                <span className="home-upcoming__label">Projected low</span>
-                <span className="home-upcoming__value">
-                  {formatCurrency(snapshot.projected_low_to_bonus.amount)} on{' '}
-                  {formatDateOnly(snapshot.projected_low_to_bonus.date)}
-                </span>
-              </div>
-              <div className="home-upcoming__row">
-                <span className="home-upcoming__label">Next bonus</span>
-                <span className="home-upcoming__value">{formatDateOnly(snapshot.next_bonus_date)}</span>
-              </div>
-            </IonCardContent>
-          </IonCard>
-
-          <IonCard>
-            <IonCardHeader>
-              <IonCardTitle>After next bonus</IonCardTitle>
-            </IonCardHeader>
-            <IonCardContent>
-              <div className="home-upcoming__row">
-                <span className="home-upcoming__label">Top-off needed</span>
-                <span className="home-upcoming__value">
-                  {formatCurrency(snapshot.topoff_needed_after_bonus)}
-                </span>
-              </div>
-              <div className="home-upcoming__row">
-                <span className="home-upcoming__label">Following bonus</span>
-                <span className="home-upcoming__value">
-                  {formatDateOnly(snapshot.following_bonus_date)}
-                </span>
-              </div>
-              <div className="home-upcoming__row">
-                <span className="home-upcoming__label">Low after top-off</span>
-                <span className="home-upcoming__value">
-                  {formatCurrency(snapshot.low_after_topoff.amount)} on{' '}
-                  {formatDateOnly(snapshot.low_after_topoff.date)}
-                </span>
-              </div>
-            </IonCardContent>
-          </IonCard>
-
-          <IonCard>
-            <IonCardHeader>
-              <IonCardTitle>Upcoming bills</IonCardTitle>
-            </IonCardHeader>
-            <IonCardContent style={{ padding: 0 }}>
-              {snapshot.bills.length === 0 ? (
-                <p className="ion-padding font-body">No bills in this snapshot.</p>
-              ) : (
-                <IonList lines="full">
-                  {snapshot.bills.map((bill) => (
-                    <IonItem key={`${bill.name}-${bill.next_date}`}>
-                      <IonLabel>
-                        <h2>{bill.name}</h2>
-                        <p>{bill.frequency}</p>
-                      </IonLabel>
-                      <IonNote slot="end" className="ion-text-end">
-                        <div>{formatCurrency(bill.amount)}</div>
-                        <div>{formatDateOnly(bill.next_date)}</div>
-                      </IonNote>
-                    </IonItem>
-                  ))}
-                </IonList>
-              )}
             </IonCardContent>
           </IonCard>
         </div>
