@@ -650,16 +650,22 @@ ion-modal.rr-modal .modal-wrapper {
 /* Auth screens (login / forgot / reset) */
 .auth-screen ion-content.auth-screen__content {
   --background: #000000;
-  --padding-start: var(--edge);
-  --padding-end: var(--edge);
-  --padding-top: calc(var(--safe-top) + var(--edge));
-  --padding-bottom: calc(var(--safe-bottom) + var(--edge));
+  --padding-start: 16px;
+  --padding-end: 16px;
+  --padding-top: calc(var(--safe-top) + 16px);
+  --padding-bottom: calc(var(--safe-bottom) + 16px);
 }
 
 .auth-screen__wrap {
   max-width: var(--col-max);
   margin: 0 auto;
+  min-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 32px);
+  min-height: calc(100vh - var(--safe-top) - var(--safe-bottom) - 32px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   padding-bottom: 24px;
+  box-sizing: border-box;
 }
 
 .auth-screen__brand {
@@ -708,9 +714,45 @@ ion-modal.rr-modal .modal-wrapper {
   margin-bottom: var(--gap);
 }
 
+.auth-screen__cmd-menu {
+  display: flex;
+  flex-direction: column;
+}
+
+.auth-screen__cmd-menu .rr-cmd-item + .rr-cmd-item {
+  border-top: none;
+}
+
 .auth-screen__cmd-win .rr-cmd-item {
   width: 100%;
   justify-content: flex-start;
+}
+
+.auth-screen__menu-link {
+  text-decoration: none;
+  color: var(--c-white);
+  font-size: var(--fs-m);
+  line-height: var(--lh-m);
+}
+
+.auth-screen__menu-link .rr-cursor {
+  visibility: hidden;
+}
+
+.auth-screen__menu-link:hover .rr-cursor,
+.auth-screen__menu-link:focus-visible .rr-cursor {
+  visibility: visible;
+}
+
+.auth-screen__menu-link:hover,
+.auth-screen__menu-link:focus-visible {
+  background: #101040;
+  outline: none;
+}
+
+.auth-screen__menu-link[aria-selected="true"] {
+  background: transparent;
+  outline: none;
 }
 
 .auth-screen__nav {
@@ -732,7 +774,7 @@ ion-modal.rr-modal .modal-wrapper {
   font-family: inherit;
   font-size: var(--fs-m);
   line-height: var(--lh-m);
-  color: var(--c-white);
+  color: var(--c-white) !important;
   text-decoration: none;
   border-top: 2px dotted #303060;
   box-sizing: border-box;

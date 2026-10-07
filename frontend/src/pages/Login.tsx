@@ -3,7 +3,7 @@ import { IonAlert } from '@ionic/react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { AuthScreenShell } from '../components/auth/AuthScreenShell';
-import { AuthNavLink } from '../components/auth/AuthNavLink';
+import { AuthMenuLink } from '../components/auth/AuthMenuLink';
 import { RrWin } from '../components/rr/RrWin';
 import { RrField } from '../components/rr/RrField';
 import { RrCmdButton } from '../components/rr/RrCmdButton';
@@ -72,16 +72,15 @@ const Login: React.FC = () => {
         </RrWin>
 
         <RrWin tag="COMMAND" className="auth-screen__cmd-win">
-          <RrCmdButton type="submit" disabled={loading} showCursor={!loading}>
-            {loading ? 'SIGNING IN...' : 'SIGN IN'}
-          </RrCmdButton>
+          <div className="auth-screen__cmd-menu" role="group" aria-label="Sign in commands">
+            <RrCmdButton type="submit" disabled={loading} showCursor={!loading}>
+              {loading ? 'SIGNING IN...' : 'SIGN IN'}
+            </RrCmdButton>
+            <AuthMenuLink to="/forgot-password">Forgot password</AuthMenuLink>
+            <AuthMenuLink to="/reset-password">Have a reset code</AuthMenuLink>
+          </div>
         </RrWin>
       </form>
-
-      <nav className="auth-screen__nav" aria-label="Other sign-in options">
-        <AuthNavLink to="/forgot-password">Forgot password</AuthNavLink>
-        <AuthNavLink to="/reset-password">Have a reset code</AuthNavLink>
-      </nav>
 
       <IonAlert
         cssClass="rr-alert"
