@@ -11,7 +11,6 @@ import {
   IonCardContent,
   IonSpinner,
   IonText,
-  IonBadge,
 } from '@ionic/react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -43,6 +42,8 @@ interface MoneySnapshot {
   status: 'on_track' | 'needs_topoff';
   topoff_needed_now: number;
   bills: SnapshotBill[];
+  /** Optional field from assistant pushes; defaults to 0 (Chase floor). */
+  min_balance?: number;
 }
 
 interface SnapshotResponse {
@@ -52,14 +53,27 @@ interface SnapshotResponse {
   stale: boolean;
 }
 
-const Stat: React.FC<{ label: string; value: string; primary?: boolean }> = ({
-  label,
-  value,
-  primary,
-}) => (
-  <div className={`home-stat${primary ? ' home-stat--primary' : ''}`}>
-    <div className="home-stat__label">{label}</div>
-    <div className="home-stat__value">{value}</div>
+type StatCardVariant = 'chase' | 'topoff' | 'low-ok' | 'low-bad' | 'bonus';
+
+const StatCard: React.FC<{
+  variant: StatCardVariant;
+  label: string;
+  value: string;
+  hero?: boolean;
+  span2?: boolean;
+}> = ({ variant, label, value, hero, span2 }) => (
+  <div
+    className={[
+      'home-stat-card',
+      `home-stat-card--${variant}`,
+      hero ? 'home-stat-card--hero' : '',
+      span2 ? 'home-stat-card--span-2' : '',
+    ]
+      .filter(Boolean)
+      .join(' ')}
+  >
+    <div className="home-stat-card__label">{label}</div>
+    <div className="home-stat-card__value">{value}</div>
   </div>
 );
 
@@ -108,9 +122,6 @@ const Home: React.FC = () => {
       timeStyle: 'short',
     });
   };
-
-  const statusColor = (status: MoneySnapshot['status']) =>
-    status === 'on_track' ? 'success' : 'warning';
 
   const statusLabel = (status: MoneySnapshot['status']) =>
     status === 'on_track' ? 'On track' : 'Needs top-off';
@@ -198,6 +209,14 @@ const Home: React.FC = () => {
 
   const asOfDisplay = snapshotResponse?.as_of ?? snapshot.as_of;
   const showTopoffNow = snapshot.topoff_needed_now > 0;
+  const minBalance =
+    typeof snapshot.min_balance === 'number' && Number.isFinite(snapshot.min_balance)
+      ? snapshot.min_balance
+      : 0;
+  const projectedLowOk = snapshot.projected_low_to_bonus.amount >= minBalance;
+  const lowVariant: StatCardVariant = projectedLowOk ? 'low-ok' : 'low-bad';
+  const statusClass =
+    snapshot.status === 'on_track' ? 'home-snapshot__status--ok' : 'home-snapshot__status--warn';
 
   return (
     <IonPage>
@@ -221,41 +240,44 @@ const Home: React.FC = () => {
             </IonCard>
           )}
 
-          <IonCard className="home-snapshot__card">
-            <IonCardContent>
-              <div className="home-snapshot__status-row">
-                <span className="home-stat__label">Status</span>
-                <IonBadge color={statusColor(snapshot.status)}>{statusLabel(snapshot.status)}</IonBadge>
-              </div>
+          <div className="home-snapshot__status-row">
+            <span className="home-snapshot__status-label">Status</span>
+            <span className={`home-snapshot__status-badge ${statusClass}`}>
+              {statusLabel(snapshot.status)}
+            </span>
+          </div>
 
-              <Stat
-                label="Chase available"
-                value={formatCurrency(snapshot.current_available_balance)}
-                primary
+          <StatCard
+            variant="chase"
+            label="Chase available"
+            value={formatCurrency(snapshot.current_available_balance)}
+            hero
+          />
+
+          <div className="home-stat-grid">
+            {showTopoffNow && (
+              <StatCard
+                variant="topoff"
+                label={`Top off by ${formatDateOnly(snapshot.projected_low_to_bonus.date)}`}
+                value={formatCurrency(snapshot.topoff_needed_now)}
               />
+            )}
+            <StatCard
+              variant={lowVariant}
+              label={`Projected low · ${formatDateOnly(snapshot.projected_low_to_bonus.date)}`}
+              value={formatCurrency(snapshot.projected_low_to_bonus.amount)}
+            />
+            <StatCard
+              variant="bonus"
+              label="Next bonus"
+              value={formatDateOnly(snapshot.next_bonus_date)}
+              span2={showTopoffNow}
+            />
+          </div>
 
-              {showTopoffNow && (
-                <Stat
-                  label={`Top off by ${formatDateOnly(snapshot.projected_low_to_bonus.date)}`}
-                  value={formatCurrency(snapshot.topoff_needed_now)}
-                />
-              )}
-
-              <Stat
-                label={`Projected low · ${formatDateOnly(snapshot.projected_low_to_bonus.date)}`}
-                value={formatCurrency(snapshot.projected_low_to_bonus.amount)}
-              />
-
-              <Stat
-                label="Next bonus"
-                value={formatDateOnly(snapshot.next_bonus_date)}
-              />
-
-              <p className="home-snapshot__updated">
-                Updated {formatAsOfNy(asOfDisplay)} (New York)
-              </p>
-            </IonCardContent>
-          </IonCard>
+          <p className="home-snapshot__updated">
+            Updated {formatAsOfNy(asOfDisplay)} (New York)
+          </p>
         </div>
       </IonContent>
     </IonPage>
