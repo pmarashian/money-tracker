@@ -260,34 +260,58 @@ body[data-app-background='1'] .app-tab-bar {
   --background: rgba(10, 10, 16, 0.9);
 }
 
-.background-picker {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
+/* Settings — swipeable background carousel */
+.bg-carousel {
   margin-top: 0.75rem;
 }
 
-.background-picker__option {
+.bg-carousel__track {
+  display: flex;
+  gap: 0.85rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.25rem 12% 0.5rem;
+  margin: 0 -0.5rem;
+  scrollbar-width: none;
+}
+
+.bg-carousel__track::-webkit-scrollbar {
+  display: none;
+}
+
+.bg-carousel__slide {
+  flex: 0 0 76%;
+  max-width: 17.5rem;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+}
+
+.bg-carousel__preview {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 390 / 844;
+  max-height: min(52vh, 22rem);
+  margin: 0 auto;
   border: 2px solid var(--ion-color-step-400);
-  border-radius: 10px;
-  padding: 0.35rem;
-  background: rgba(0, 0, 0, 0.35);
-  cursor: pointer;
-  text-align: left;
-  color: inherit;
-  font: inherit;
-  width: 100%;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #000;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
 }
 
-.background-picker__option--selected {
+.bg-carousel__preview--selected {
   border-color: var(--ion-color-primary);
-  box-shadow: 0 0 0 1px var(--ion-color-primary);
+  box-shadow:
+    0 0 0 1px var(--ion-color-primary),
+    0 10px 28px rgba(0, 0, 0, 0.45);
 }
 
-.background-picker__thumb {
-  width: 100%;
-  aspect-ratio: 9 / 19;
-  border-radius: 6px;
+.bg-carousel__preview-bg {
+  position: absolute;
+  inset: 0;
   background-color: #000;
   background-size: cover;
   background-position: center bottom;
@@ -295,20 +319,74 @@ body[data-app-background='1'] .app-tab-bar {
   image-rendering: crisp-edges;
 }
 
-.background-picker__thumb--none {
-  background: linear-gradient(180deg, #111 0%, #000 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--ion-color-medium);
-  font-size: 0.75rem;
+.bg-carousel__preview-bg--none {
+  background: linear-gradient(180deg, #1a1a22 0%, #000 100%);
 }
 
-.background-picker__label {
-  display: block;
-  margin-top: 0.4rem;
-  font-size: 0.85rem;
-  line-height: 1.25;
+.bg-carousel__mock {
+  position: absolute;
+  top: 14%;
+  left: 7%;
+  right: 7%;
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  min-height: 0;
+  opacity: 0.88;
+  pointer-events: none;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+}
+
+.bg-carousel__mock.home-stat-card--hero .home-stat-card__value {
+  font-size: 1.35rem;
+}
+
+.bg-carousel__mock .home-stat-card__label {
+  font-size: 0.55rem;
+}
+
+.bg-carousel__applied {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.45rem;
+  color: var(--ion-color-primary);
+  font-size: 1.5rem;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.8));
+  pointer-events: none;
+}
+
+.bg-carousel__dots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0.85rem 0 0.5rem;
+}
+
+.bg-carousel__dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--ion-color-step-500);
+  cursor: pointer;
+}
+
+.bg-carousel__dot--active {
+  background: var(--ion-color-primary);
+  transform: scale(1.2);
+}
+
+.bg-carousel__name {
+  text-align: center;
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.bg-carousel__use-btn {
+  margin-top: 0;
 }
 
 .expense-marker {

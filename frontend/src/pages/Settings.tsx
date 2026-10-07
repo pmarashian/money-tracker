@@ -21,7 +21,8 @@ import { useNavigate } from 'react-router-dom';
 import { apiGet, apiPatch } from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
 import { useAppBackground } from '../hooks/useAppBackground';
-import { BACKGROUND_OPTIONS, type BackgroundId } from '../lib/appBackgrounds';
+import { BackgroundPickerCarousel } from '../components/BackgroundPickerCarousel';
+import type { BackgroundId } from '../lib/appBackgrounds';
 
 interface UserSettings {
   paycheckAmount: number;
@@ -151,31 +152,10 @@ const Settings: React.FC = () => {
               <p className="font-body" style={{ marginBottom: '0.5rem' }}>
                 Full-page pixel art behind the app tabs. Scenery anchors to the bottom of the screen.
               </p>
-              <div className="background-picker" role="listbox" aria-label="Background">
-                {BACKGROUND_OPTIONS.map((option) => {
-                  const selected = backgroundId === option.id;
-                  return (
-                    <button
-                      key={option.id}
-                      type="button"
-                      role="option"
-                      aria-selected={selected}
-                      className={`background-picker__option${selected ? ' background-picker__option--selected' : ''}`}
-                      onClick={() => setBackgroundId(option.id as BackgroundId)}
-                    >
-                      {option.src ? (
-                        <div
-                          className="background-picker__thumb"
-                          style={{ backgroundImage: `url(${option.src})` }}
-                        />
-                      ) : (
-                        <div className="background-picker__thumb background-picker__thumb--none">Black</div>
-                      )}
-                      <span className="background-picker__label font-body">{option.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
+              <BackgroundPickerCarousel
+                backgroundId={backgroundId}
+                onSelect={(id: BackgroundId) => setBackgroundId(id)}
+              />
             </IonCardContent>
           </IonCard>
 
