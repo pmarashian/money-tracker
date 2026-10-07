@@ -728,11 +728,21 @@ ion-modal.rr-modal .modal-wrapper {
   justify-content: flex-start;
 }
 
+.auth-screen a.auth-screen__menu-link,
+.auth-screen a.auth-screen__nav-link {
+  color: var(--c-white) !important;
+  border-bottom-color: transparent !important;
+}
+
 .auth-screen__menu-link {
   text-decoration: none;
   color: var(--c-white);
   font-size: var(--fs-m);
   line-height: var(--lh-m);
+}
+
+.auth-screen__menu-link .rr-cmd-item__text {
+  color: var(--c-white) !important;
 }
 
 .auth-screen__menu-link .rr-cursor {

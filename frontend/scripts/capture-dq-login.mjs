@@ -28,6 +28,18 @@ try {
   const signUp = await page.locator('text=Sign up').count();
   const register = await page.locator('a[href="/register"]').count();
   if (signUp > 0 || register > 0) throw new Error('sign-up UI still present');
+
+  const menuLinks = page.locator('.auth-screen__menu-link');
+  const linkCount = await menuLinks.count();
+  if (linkCount < 2) throw new Error(`expected 2 menu links, got ${linkCount}`);
+  for (let i = 0; i < linkCount; i++) {
+    const color = await menuLinks.nth(i).evaluate((el) => getComputedStyle(el).color);
+    if (color !== 'rgb(252, 252, 252)') {
+      throw new Error(`menu link ${i} color is ${color}, expected rgb(252, 252, 252)`);
+    }
+  }
+  console.log('menu link colors OK');
+
   await page.waitForTimeout(400);
   await page.screenshot({ path: OUT_390, fullPage: false, animations: 'disabled' });
   assertImage(OUT_390);
