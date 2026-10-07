@@ -24,7 +24,6 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
-import TellerCallback from "./pages/TellerCallback";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import ProtectedRoute from "./components/ProtectedRoute";
 import LoadingSpinner from "./components/LoadingSpinner";
@@ -132,14 +131,6 @@ const AppContent: React.FC = () => {
         element={
           <ProtectedRoute>
             <Settings />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/app/teller-callback"
-        element={
-          <ProtectedRoute>
-            <TellerCallback />
           </ProtectedRoute>
         }
       />

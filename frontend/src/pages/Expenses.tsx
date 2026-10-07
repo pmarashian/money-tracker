@@ -16,6 +16,7 @@ import {
   IonSelect,
   IonSelectOption,
   IonAlert,
+  IonBadge,
 } from '@ionic/react';
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
@@ -26,12 +27,17 @@ interface RecurringPattern {
   amount: number;
   frequency: 'monthly' | 'weekly' | 'biweekly';
   typicalDayOfMonth?: number;
+  source?: 'auto' | 'manual';
+  userEdited?: boolean;
+  inactive?: boolean;
+  paused?: boolean;
+  externalKey?: string;
+  nextDate?: string;
 }
 
 const Expenses: React.FC = () => {
   const { user } = useAuth();
   const [recurringExpenses, setRecurringExpenses] = useState<RecurringPattern[]>([]);
-  const [totalMonthlyExpenses, setTotalMonthlyExpenses] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,10 +55,9 @@ const Expenses: React.FC = () => {
     if (!user) return;
     setLoading(true);
     setError(null);
-    const result = await apiGet<{ recurring: RecurringPattern[]; totalMonthly: number }>('/api/transactions/recurring');
+    const result = await apiGet<{ recurring: RecurringPattern[] }>('/api/transactions/recurring');
     if (result.ok && result.data) {
       setRecurringExpenses(result.data.recurring || []);
-      setTotalMonthlyExpenses(result.data.totalMonthly || 0);
     } else {
       setError(result.error || 'An error occurred');
     }
@@ -62,6 +67,10 @@ const Expenses: React.FC = () => {
   useEffect(() => {
     fetchRecurringExpenses();
   }, [fetchRecurringExpenses]);
+
+  const visibleExpenses = recurringExpenses
+    .map((expense, index) => ({ expense, index }))
+    .filter(({ expense }) => !expense.inactive);
 
   const openAdd = () => {
     setEditingIndex(null);
@@ -99,17 +108,6 @@ const Expenses: React.FC = () => {
     if (!Number.isFinite(amount) || amount <= 0) {
       setFormError('Amount must be a positive number');
       return false;
-    }
-    if (formFrequency !== 'monthly' && formFrequency !== 'weekly' && formFrequency !== 'biweekly') {
-      setFormError('Please select a frequency');
-      return false;
-    }
-    if (formDayOfMonth.trim()) {
-      const d = Number(formDayOfMonth);
-      if (!Number.isInteger(d) || d < 1 || d > 31) {
-        setFormError('Day of month must be between 1 and 31');
-        return false;
-      }
     }
     setFormError(null);
     return true;
@@ -154,6 +152,17 @@ const Expenses: React.FC = () => {
     }
   };
 
+  const togglePaused = async (index: number) => {
+    const item = recurringExpenses[index];
+    const result = await apiPatch<{ recurring: RecurringPattern[] }>('/api/transactions/recurring', {
+      index,
+      paused: !item.paused,
+    });
+    if (result.ok && result.data?.recurring) {
+      setRecurringExpenses(result.data.recurring);
+    }
+  };
+
   const handleDeleteConfirm = async () => {
     if (deleteIndex === null) return;
     const index = deleteIndex;
@@ -161,20 +170,15 @@ const Expenses: React.FC = () => {
     const result = await apiDelete<{ recurring: RecurringPattern[] }>(
       `/api/transactions/recurring?index=${index}`
     );
-      if (result.ok && result.data?.recurring) {
-        setRecurringExpenses(result.data.recurring);
-        setTotalMonthlyExpenses(result.data.totalMonthly || 0);
-      } else {
+    if (result.ok && result.data?.recurring) {
+      setRecurringExpenses(result.data.recurring);
+    } else {
       setError(result.error || 'Failed to delete');
     }
   };
 
-  const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(Math.abs(amount)); // Use absolute value since amounts are negative
-  };
+  const formatCurrency = (amount: number): string =>
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(Math.abs(amount));
 
   const formatFrequency = (frequency: string): string => {
     switch (frequency) {
@@ -187,6 +191,16 @@ const Expenses: React.FC = () => {
       default:
         return frequency;
     }
+  };
+
+  const itemMarker = (expense: RecurringPattern) => {
+    if (expense.userEdited || expense.source === 'manual') {
+      return <IonBadge color="tertiary" className="expense-marker">edited</IonBadge>;
+    }
+    if (expense.source === 'auto') {
+      return <IonBadge color="medium" className="expense-marker">auto</IonBadge>;
+    }
+    return null;
   };
 
   if (loading) {
@@ -236,43 +250,57 @@ const Expenses: React.FC = () => {
       </IonHeader>
       <IonContent>
         <div className="ion-padding">
-          <p className="font-body">Your automatically detected recurring expenses. Add, edit, or remove items below.</p>
+          <p className="font-body">
+            Recurring bills used by your projection. Auto-synced items are labeled; edits are protected from sync overwrites.
+          </p>
 
           <IonButton expand="block" className="ion-margin-bottom" onClick={openAdd}>
             Add recurring expense
           </IonButton>
 
-          {recurringExpenses.length === 0 ? (
+          {visibleExpenses.length === 0 ? (
             <div className="ion-text-center ion-padding">
               <IonText color="medium">
-                <h3>No recurring expenses found</h3>
-                <p>Upload your CSV transactions to detect recurring patterns, or add one manually above.</p>
+                <h3>No active expenses</h3>
+                <p>Add a bill manually or sync from your assistant script.</p>
               </IonText>
             </div>
           ) : (
             <div>
-              {[...recurringExpenses]
-                .map((expense, originalIndex) => ({ expense, originalIndex }))
-                .sort((a, b) =>
-                  a.expense.name.localeCompare(b.expense.name, undefined, { sensitivity: 'base' })
-                )
-                .map(({ expense, originalIndex }) => (
-                  <IonCard key={originalIndex} className="expense-item ion-margin-bottom">
+              {[...visibleExpenses]
+                .sort((a, b) => a.expense.name.localeCompare(b.expense.name, undefined, { sensitivity: 'base' }))
+                .map(({ expense, index }) => (
+                  <IonCard
+                    key={`${expense.externalKey ?? expense.name}-${index}`}
+                    className={`expense-item ion-margin-bottom${expense.paused ? ' expense-item--paused' : ''}`}
+                  >
                     <IonCardContent className="expense-item__content">
                       <div className="expense-item__row expense-item__row--main">
-                        <span className="font-heading expense-item__name">{expense.name}</span>
+                        <span className="font-heading expense-item__name">
+                          {expense.name} {itemMarker(expense)}
+                        </span>
                         <span className="font-body expense-item__amount">{formatCurrency(expense.amount)}</span>
                       </div>
                       <div className="expense-item__row expense-item__row--meta">
                         <span className="expense-item__meta">
                           {formatFrequency(expense.frequency)}
                           {expense.typicalDayOfMonth != null && ` · Day ${expense.typicalDayOfMonth}`}
+                          {expense.paused && ' · Paused'}
                         </span>
                         <div className="expense-item__actions">
-                          <IonButton fill="outline" size="small" onClick={() => openEdit(originalIndex)}>
+                          <IonButton fill="outline" size="small" onClick={() => togglePaused(index)}>
+                            {expense.paused ? 'Resume' : 'Pause'}
+                          </IonButton>
+                          <IonButton fill="outline" size="small" onClick={() => openEdit(index)}>
                             Edit
                           </IonButton>
-                          <IonButton fill="outline" color="danger" size="small" className="ion-margin-start" onClick={() => setDeleteIndex(originalIndex)}>
+                          <IonButton
+                            fill="outline"
+                            color="danger"
+                            size="small"
+                            className="ion-margin-start"
+                            onClick={() => setDeleteIndex(index)}
+                          >
                             Delete
                           </IonButton>
                         </div>
@@ -288,9 +316,7 @@ const Expenses: React.FC = () => {
           <IonHeader>
             <IonToolbar>
               <IonTitle>{editingIndex !== null ? 'Edit recurring expense' : 'Add recurring expense'}</IonTitle>
-              <IonButton slot="end" fill="clear" onClick={closeModal}>
-                Cancel
-              </IonButton>
+              <IonButton slot="end" fill="clear" onClick={closeModal}>Cancel</IonButton>
             </IonToolbar>
           </IonHeader>
           <IonContent className="ion-padding">

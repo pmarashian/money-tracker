@@ -169,9 +169,14 @@ ion-page ion-content {
   line-height: 1.12;
 }
 
-.home-stat-card--chase {
+.home-stat-card--hero-ok {
   background: linear-gradient(145deg, #0c4a6e 0%, #0f766e 52%, #14b8a6 100%);
   color: #ecfeff;
+}
+
+.home-stat-card--hero-bad {
+  background: linear-gradient(145deg, #881337 0%, #be123c 50%, #fb7185 100%);
+  color: #fff1f2;
 }
 
 .home-stat-card--topoff {
@@ -211,6 +216,17 @@ ion-page ion-content {
   margin: 1rem 0 0;
   line-height: 1.4;
   text-align: center;
+}
+
+.expense-marker {
+  margin-left: 0.35rem;
+  vertical-align: middle;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+}
+
+.expense-item--paused {
+  opacity: 0.55;
 }
 
 .home-upcoming .home-upcoming__row {

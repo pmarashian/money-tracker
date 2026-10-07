@@ -8,6 +8,13 @@ export interface RecurringPattern {
   amount: number;
   frequency: 'monthly' | 'weekly' | 'biweekly';
   typicalDayOfMonth?: number;
+  /** Stable id from Chase / assistant sync */
+  externalKey?: string;
+  source?: 'auto' | 'manual';
+  userEdited?: boolean;
+  inactive?: boolean;
+  paused?: boolean;
+  nextDate?: string;
 }
 
 export async function detectRecurringTransactions(userId: string): Promise<RecurringPattern[]> {

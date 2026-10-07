@@ -19,13 +19,6 @@ import { parseDateOnlyAsLocal } from '../lib/dateUtils';
 
 const NY_TZ = 'America/New_York';
 
-interface SnapshotBill {
-  name: string;
-  amount: number;
-  frequency: string;
-  next_date: string;
-}
-
 interface SnapshotAmountDate {
   amount: number;
   date: string;
@@ -41,8 +34,8 @@ interface MoneySnapshot {
   low_after_topoff: SnapshotAmountDate;
   status: 'on_track' | 'needs_topoff';
   topoff_needed_now: number;
-  bills: SnapshotBill[];
-  /** Optional field from assistant pushes; defaults to 0 (Chase floor). */
+  bills: unknown[];
+  balance_before_next_bonus?: SnapshotAmountDate;
   min_balance?: number;
 }
 
@@ -53,7 +46,7 @@ interface SnapshotResponse {
   stale: boolean;
 }
 
-type StatCardVariant = 'chase' | 'topoff' | 'low-ok' | 'low-bad' | 'bonus';
+type StatCardVariant = 'hero-ok' | 'hero-bad' | 'topoff';
 
 const StatCard: React.FC<{
   variant: StatCardVariant;
@@ -108,9 +101,11 @@ const Home: React.FC = () => {
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
 
-  const formatDateOnly = (dateStr: string) => {
+  const formatShortDate = (dateStr: string) => {
     const d = parseDateOnlyAsLocal(dateStr);
-    return d ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : dateStr;
+    return d
+      ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      : dateStr;
   };
 
   const formatAsOfNy = (iso: string) => {
@@ -213,8 +208,9 @@ const Home: React.FC = () => {
     typeof snapshot.min_balance === 'number' && Number.isFinite(snapshot.min_balance)
       ? snapshot.min_balance
       : 0;
-  const projectedLowOk = snapshot.projected_low_to_bonus.amount >= minBalance;
-  const lowVariant: StatCardVariant = projectedLowOk ? 'low-ok' : 'low-bad';
+  const beforeBonus = snapshot.balance_before_next_bonus;
+  const heroVariant: StatCardVariant =
+    beforeBonus && beforeBonus.amount >= minBalance ? 'hero-ok' : 'hero-bad';
   const statusClass =
     snapshot.status === 'on_track' ? 'home-snapshot__status--ok' : 'home-snapshot__status--warn';
 
@@ -247,28 +243,22 @@ const Home: React.FC = () => {
             </span>
           </div>
 
-          <StatCard
-            variant="chase"
-            label="Chase available"
-            value={formatCurrency(snapshot.current_available_balance)}
-            hero
-          />
-
-          <div className="home-stat-grid">
-            {showTopoffNow && (
-              <StatCard
-                variant="topoff"
-                label={`Top off by ${formatDateOnly(snapshot.projected_low_to_bonus.date)}`}
-                value={formatCurrency(snapshot.topoff_needed_now)}
-              />
-            )}
+          {beforeBonus && (
             <StatCard
-              variant={lowVariant}
-              label={`Projected low · ${formatDateOnly(snapshot.projected_low_to_bonus.date)}`}
-              value={formatCurrency(snapshot.projected_low_to_bonus.amount)}
-              span2={!showTopoffNow}
+              variant={heroVariant}
+              label={`Balance before next bonus · ${formatShortDate(beforeBonus.date)}`}
+              value={formatCurrency(beforeBonus.amount)}
+              hero
             />
-          </div>
+          )}
+
+          {showTopoffNow && (
+            <StatCard
+              variant="topoff"
+              label={`Top off by ${formatShortDate(snapshot.projected_low_to_bonus.date)}`}
+              value={formatCurrency(snapshot.topoff_needed_now)}
+            />
+          )}
 
           <p className="home-snapshot__updated">
             Updated {formatAsOfNy(asOfDisplay)} (New York)
