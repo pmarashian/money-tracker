@@ -35,8 +35,10 @@ const FREQUENCY_OPTIONS: { value: RecurringPattern['frequency']; label: string }
   { value: 'biweekly', label: 'Bi-weekly' },
 ];
 
-function expenseNameTag(name: string): string {
-  return name.trim().toUpperCase();
+function expenseSourceTag(expense: RecurringPattern): string | undefined {
+  if (expense.userEdited || expense.source === 'manual') return 'EDITED';
+  if (expense.source === 'auto') return 'AUTO';
+  return undefined;
 }
 
 const Expenses: React.FC = () => {
@@ -197,16 +199,6 @@ const Expenses: React.FC = () => {
     }
   };
 
-  const itemMarker = (expense: RecurringPattern) => {
-    if (expense.userEdited || expense.source === 'manual') {
-      return <span className="rr-badge rr-badge--edited">edited</span>;
-    }
-    if (expense.source === 'auto') {
-      return <span className="rr-badge">auto</span>;
-    }
-    return null;
-  };
-
   if (loading) {
     return (
       <IonPage className="rr-app">
@@ -271,11 +263,11 @@ const Expenses: React.FC = () => {
                 .map(({ expense, index }) => (
                   <RrWin
                     key={`${expense.externalKey ?? expense.name}-${index}`}
-                    tag={expenseNameTag(expense.name)}
+                    tag={expenseSourceTag(expense)}
                     className={expense.paused ? 'mt-expense--paused' : undefined}
                   >
-                    <div className="mt-expense__row">
-                      <span className="mt-expense__badges">{itemMarker(expense)}</span>
+                    <div className="mt-expense__head">
+                      <h2 className="mt-expense__vendor">{expense.name}</h2>
                       <span className="mt-expense__amount">{formatCurrency(expense.amount)}</span>
                     </div>
                     <p className="mt-expense__schedule">

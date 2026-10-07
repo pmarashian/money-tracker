@@ -359,30 +359,46 @@ ion-modal.rr-modal .modal-wrapper {
   margin-bottom: var(--gap);
 }
 
+.mt-expense__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mt-expense__vendor {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: inherit;
+  font-size: var(--fs-l);
+  line-height: var(--lh-l);
+  font-weight: normal;
+  color: var(--c-white);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .mt-expense__amount {
   color: var(--c-gold);
-  font-size: var(--fs-m);
-  line-height: var(--lh-m);
+  font-size: var(--fs-l);
+  line-height: var(--lh-l);
   text-align: right;
-  flex: none;
-}
-
-.mt-expense__badges {
-  display: flex;
-  align-items: center;
-  flex: 1;
-  min-width: 0;
-}
-
-.mt-expense__badges .rr-badge {
-  margin-left: 0;
+  flex: 0 0 auto;
+  align-self: flex-start;
+  max-width: 48%;
 }
 
 .mt-expense__schedule {
   margin: 4px 0 0;
-  font-size: var(--fs-s);
-  line-height: var(--lh-s);
+  font-size: var(--fs-m);
+  line-height: var(--lh-m);
   color: var(--c-grey);
+}
+
+.mt-expense__actions .rr-cmd-item {
+  font-size: var(--fs-m);
+  line-height: var(--lh-m);
 }
 
 .rr-win.mt-expense--paused {
@@ -539,13 +555,6 @@ ion-modal.rr-modal .modal-wrapper {
 .ion-alert.rr-alert .alert-button[role='destructive'],
 .ion-alert.rr-alert .alert-button.alert-button-role-destructive {
   color: var(--c-red-hi) !important;
-}
-
-.mt-expense__row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
 }
 
 .mt-expense__actions {
