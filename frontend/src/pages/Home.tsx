@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   IonContent,
   IonHeader,
@@ -40,6 +40,45 @@ interface SnapshotResponse {
   as_of: string | null;
   received_at: string | null;
   stale: boolean;
+}
+
+const BALANCE_FONT_MAX_PX = 32;
+const BALANCE_FONT_MIN_PX = 16;
+
+function HomeBalanceAmount({ amount }: { amount: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLParagraphElement>(null);
+
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    const text = textRef.current;
+    if (!container || !text) return;
+
+    const fit = () => {
+      let size = BALANCE_FONT_MAX_PX;
+      const applySize = (px: number) => {
+        text.style.fontSize = `${px}px`;
+        text.style.lineHeight = `${Math.round(px * 1.25)}px`;
+      };
+
+      applySize(size);
+      while (size > BALANCE_FONT_MIN_PX && text.scrollWidth > container.clientWidth) {
+        size -= 1;
+        applySize(size);
+      }
+    };
+
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, [amount]);
+
+  return (
+    <div ref={containerRef} className="home-hero-balance-fit">
+      <p ref={textRef} className="home-hero-balance-fit__amount">{amount}</p>
+    </div>
+  );
 }
 
 const Home: React.FC = () => {
@@ -176,7 +215,7 @@ const Home: React.FC = () => {
           <IonTitle>Money Tracker</IonTitle>
         </IonToolbar>
       </IonHeader>
-      <IonContent>
+      <IonContent className="home-content">
         <div className="home-snapshot rr-stack">
           {snapshotResponse?.stale && (
             <RrWin tag="STALE">
@@ -195,16 +234,16 @@ const Home: React.FC = () => {
           </div>
 
           {beforeBonus && (
-            <RrWin tag="BALANCE" className="home-hero-win">
+            <RrWin tag="BALANCE" className="home-hero-win home-hero-win--balance">
               <p className="rr-hero-label">
                 Before next bonus · {formatShortDate(beforeBonus.date)}
               </p>
-              <p className="rr-hero-value">{formatCurrency(beforeBonus.amount)}</p>
+              <HomeBalanceAmount amount={formatCurrency(beforeBonus.amount)} />
             </RrWin>
           )}
 
           {showTopoffNow && (
-            <RrWin tag="TOP OFF" className="home-hero-win">
+            <RrWin tag="TOP OFF" className="home-hero-win home-hero-win--topoff">
               <p className="rr-hero-label">
                 Top off by {formatShortDate(snapshot.projected_low_to_bonus.date)}
               </p>
@@ -212,7 +251,7 @@ const Home: React.FC = () => {
             </RrWin>
           )}
 
-          <p className="home-snapshot__updated rr-fs-s">
+          <p className="home-snapshot__updated">
             Updated {formatAsOfNy(asOfDisplay)} (New York)
           </p>
         </div>
