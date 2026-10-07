@@ -587,12 +587,35 @@ a:hover, ion-router-link:hover {
   background: var(--ion-text-color);
 }
 
-/* Condensed expense list items */
+.expenses-intro {
+  font-size: 0.8rem;
+  line-height: 1.35;
+  margin: 0 0 1rem;
+  color: var(--ion-color-step-600);
+}
+
+/* Expense list — cards align with full-width Add button (no extra ion-card inset) */
+.expenses-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 100%;
+}
+
+ion-card.expense-item {
+  margin: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
 .expense-item ion-card-content.expense-item__content {
   --padding-top: 12px;
   --padding-bottom: 12px;
-  --padding-start: 16px;
-  --padding-end: 16px;
+  --padding-start: 14px;
+  --padding-end: 14px;
+  overflow: visible;
 }
 
 .expense-item__row {
@@ -603,7 +626,7 @@ a:hover, ion-router-link:hover {
 }
 
 .expense-item__row--main {
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .expense-item__row--main .expense-item__name {
@@ -619,19 +642,30 @@ a:hover, ion-router-link:hover {
   flex-shrink: 0;
 }
 
-.expense-item__row--meta .expense-item__meta {
-  font-size: 0.95em;
+.expense-item__schedule {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+  line-height: 1.25;
   color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .expense-item__actions {
-  display: flex;
-  align-items: center;
-  gap: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  width: 100%;
 }
 
-.expense-item__actions ion-button {
-  margin-left: 4px;
+.expense-item__actions .expense-item__action-btn {
+  margin: 0;
+  width: 100%;
+  min-width: 0;
+  --padding-start: 6px;
+  --padding-end: 6px;
+  font-size: 0.72rem;
 }
 
 /* Settings page */

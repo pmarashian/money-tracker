@@ -250,8 +250,8 @@ const Expenses: React.FC = () => {
       </IonHeader>
       <IonContent>
         <div className="ion-padding">
-          <p className="font-body">
-            Recurring bills used by your projection. Auto-synced items are labeled; edits are protected from sync overwrites.
+          <p className="font-body expenses-intro">
+            Bills used by your projection. Your edits are never overwritten by sync.
           </p>
 
           <IonButton expand="block" className="ion-margin-bottom" onClick={openAdd}>
@@ -266,13 +266,13 @@ const Expenses: React.FC = () => {
               </IonText>
             </div>
           ) : (
-            <div>
+            <div className="expenses-list">
               {[...visibleExpenses]
                 .sort((a, b) => a.expense.name.localeCompare(b.expense.name, undefined, { sensitivity: 'base' }))
                 .map(({ expense, index }) => (
                   <IonCard
                     key={`${expense.externalKey ?? expense.name}-${index}`}
-                    className={`expense-item ion-margin-bottom${expense.paused ? ' expense-item--paused' : ''}`}
+                    className={`expense-item${expense.paused ? ' expense-item--paused' : ''}`}
                   >
                     <IonCardContent className="expense-item__content">
                       <div className="expense-item__row expense-item__row--main">
@@ -281,29 +281,37 @@ const Expenses: React.FC = () => {
                         </span>
                         <span className="font-body expense-item__amount">{formatCurrency(expense.amount)}</span>
                       </div>
-                      <div className="expense-item__row expense-item__row--meta">
-                        <span className="expense-item__meta">
-                          {formatFrequency(expense.frequency)}
-                          {expense.typicalDayOfMonth != null && ` · Day ${expense.typicalDayOfMonth}`}
-                          {expense.paused && ' · Paused'}
-                        </span>
-                        <div className="expense-item__actions">
-                          <IonButton fill="outline" size="small" onClick={() => togglePaused(index)}>
-                            {expense.paused ? 'Resume' : 'Pause'}
-                          </IonButton>
-                          <IonButton fill="outline" size="small" onClick={() => openEdit(index)}>
-                            Edit
-                          </IonButton>
-                          <IonButton
-                            fill="outline"
-                            color="danger"
-                            size="small"
-                            className="ion-margin-start"
-                            onClick={() => setDeleteIndex(index)}
-                          >
-                            Delete
-                          </IonButton>
-                        </div>
+                      <p className="expense-item__schedule font-body">
+                        {formatFrequency(expense.frequency)}
+                        {expense.typicalDayOfMonth != null && ` · Day ${expense.typicalDayOfMonth}`}
+                        {expense.paused && ' · Paused'}
+                      </p>
+                      <div className="expense-item__actions">
+                        <IonButton
+                          fill="outline"
+                          size="small"
+                          className="expense-item__action-btn"
+                          onClick={() => togglePaused(index)}
+                        >
+                          {expense.paused ? 'Resume' : 'Pause'}
+                        </IonButton>
+                        <IonButton
+                          fill="outline"
+                          size="small"
+                          className="expense-item__action-btn"
+                          onClick={() => openEdit(index)}
+                        >
+                          Edit
+                        </IonButton>
+                        <IonButton
+                          fill="outline"
+                          color="danger"
+                          size="small"
+                          className="expense-item__action-btn"
+                          onClick={() => setDeleteIndex(index)}
+                        >
+                          Delete
+                        </IonButton>
                       </div>
                     </IonCardContent>
                   </IonCard>
