@@ -1,210 +1,170 @@
-import React, { useState } from "react";
-import {
-  IonContent,
-  IonPage,
-  IonItem,
-  IonLabel,
-  IonInput,
-  IonButton,
-  IonText,
-  IonLoading,
-  IonAlert,
-} from "@ionic/react";
-import { useNavigate, useSearchParams, Link } from "react-router-dom";
-import { apiPost } from "../lib/api";
+import React, { useState } from 'react';
+import { IonAlert } from '@ionic/react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { apiPost } from '../lib/api';
+import { AuthScreenShell } from '../components/auth/AuthScreenShell';
+import { AuthNavLink } from '../components/auth/AuthNavLink';
+import { RrWin } from '../components/rr/RrWin';
+import { RrField } from '../components/rr/RrField';
+import { RrCmdButton } from '../components/rr/RrCmdButton';
 
 const ResetPassword: React.FC = () => {
   const [searchParams] = useSearchParams();
-  const token = searchParams.get("token");
+  const token = searchParams.get('token');
   const navigate = useNavigate();
 
-  const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [showAlert, setShowAlert] = useState(false);
+
+  const showCodeForm = !token;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setError('');
 
     if (newPassword !== confirmPassword) {
-      setError("Passwords do not match");
+      setError('Passwords do not match');
       setShowAlert(true);
       return;
     }
 
     if (newPassword.length < 6) {
-      setError("Password must be at least 6 characters long");
+      setError('Password must be at least 6 characters long');
       setShowAlert(true);
       return;
     }
 
     setLoading(true);
 
-    const body = token
-      ? { token, newPassword }
-      : { email, code, newPassword };
+    const body = token ? { token, newPassword } : { email, code, newPassword };
 
     const result = await apiPost<{ success?: boolean; message?: string }>(
-      "/api/auth/reset-password",
+      '/api/auth/reset-password',
       body
     );
 
     setLoading(false);
 
     if (result.ok && result.data?.success) {
-      navigate("/login", { replace: true });
+      navigate('/login', { replace: true });
     } else {
       setError(
         result.error ??
-          (token ? "Invalid or expired reset link." : "Invalid or expired reset code.")
+          (token ? 'Invalid or expired reset link.' : 'Invalid or expired reset code.')
       );
       setShowAlert(true);
     }
   };
 
-  const showCodeForm = !token;
-
   return (
-    <IonPage>
-      <IonContent className="ion-padding" fullscreen>
-        <div style={{ paddingTop: "5rem" }}>
-          <div className="ion-text-center" style={{ marginBottom: "1.5rem" }}>
-            <img
-              src="/images/money-bag.png"
-              alt="Money Tracker"
-              style={{
-                height: "80px",
-                width: "auto",
-                display: "block",
-                margin: "0 auto",
-              }}
-            />
-          </div>
+    <AuthScreenShell subtitle="RESET PASSWORD">
+      <RrWin tag="HELP">
+        <p className="auth-screen__message">
+          {showCodeForm
+            ? 'Enter the code from your email and the address you used to request the reset.'
+            : 'You opened a reset link. Enter your new password below.'}
+        </p>
+      </RrWin>
 
-          <div className="ion-text-center ion-margin-bottom">
-            <p className="font-body">Reset password</p>
-          </div>
+      {showCodeForm && (
+        <p className="auth-screen__hint rr-fs-m rr-dim">
+          If you have a reset link, open it to skip the code.
+        </p>
+      )}
 
+      {!showCodeForm && (
+        <nav className="auth-screen__nav auth-screen__nav--compact">
+          <AuthNavLink to="/reset-password" replace>Use code instead</AuthNavLink>
+        </nav>
+      )}
+
+      <form className="auth-screen__form" onSubmit={handleSubmit}>
+        <RrWin tag={showCodeForm ? 'CODE' : 'NEW PASS'}>
           {showCodeForm && (
-            <p className="ion-text-center ion-margin-bottom ion-margin-horizontal font-body" style={{ fontSize: "0.9rem" }}>
-              Enter the code from your email and the email address you used to request the reset.
-            </p>
-          )}
-
-          {showCodeForm && (
-            <p className="ion-text-center ion-margin-bottom ion-margin-horizontal" style={{ fontSize: "0.85rem" }}>
-              <IonText color="medium">
-                If you have a reset link, open it to skip entering the code.
-              </IonText>
-            </p>
-          )}
-
-          {!showCodeForm && (
-            <p className="ion-text-center ion-margin-bottom ion-margin-horizontal font-body" style={{ fontSize: "0.9rem" }}>
-              You&apos;re using the reset link. Enter your new password below.
-            </p>
-          )}
-
-          {!showCodeForm && (
-            <p className="ion-text-center ion-margin-bottom ion-margin-horizontal" style={{ fontSize: "0.85rem" }}>
-              <IonText color="medium">
-                Prefer to use the code from your email?{" "}
-                <Link to="/reset-password" replace>Use code instead</Link>
-              </IonText>
-            </p>
-          )}
-
-          <form onSubmit={handleSubmit}>
-            {showCodeForm && (
-              <>
-                <IonItem>
-                  <IonLabel position="stacked">Email</IonLabel>
-                  <IonInput
-                    type="email"
-                    value={email}
-                    onIonInput={(e) => setEmail(e.detail.value ?? "")}
-                    required
-                    placeholder="Email you requested reset for"
-                  />
-                </IonItem>
-                <IonItem>
-                  <IonLabel position="stacked">Reset code</IonLabel>
-                  <IonInput
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={6}
-                    value={code}
-                    onIonInput={(e) => setCode((e.detail.value ?? "").replace(/\D/g, "").slice(0, 6))}
-                    required
-                    placeholder="6-digit code from email"
-                  />
-                </IonItem>
-              </>
-            )}
-
-            <IonItem>
-              <IonLabel position="stacked">New password</IonLabel>
-              <IonInput
-                type="password"
-                value={newPassword}
-                onIonInput={(e) => setNewPassword(e.detail.value ?? "")}
-                required
-                placeholder="Enter new password"
+            <>
+              <RrField
+                label="Email"
+                inputProps={{
+                  id: 'reset-email',
+                  type: 'email',
+                  name: 'email',
+                  autoComplete: 'email',
+                  value: email,
+                  placeholder: 'you@mail.com',
+                  required: true,
+                  onChange: (e) => setEmail(e.target.value),
+                }}
               />
-            </IonItem>
-
-            <IonItem>
-              <IonLabel position="stacked">Confirm password</IonLabel>
-              <IonInput
-                type="password"
-                value={confirmPassword}
-                onIonInput={(e) => setConfirmPassword(e.detail.value ?? "")}
-                required
-                placeholder="Confirm new password"
+              <RrField
+                label="Reset code"
+                inputProps={{
+                  id: 'reset-code',
+                  type: 'text',
+                  inputMode: 'numeric',
+                  maxLength: 6,
+                  value: code,
+                  placeholder: '123456',
+                  required: true,
+                  onChange: (e) =>
+                    setCode(e.target.value.replace(/\D/g, '').slice(0, 6)),
+                }}
               />
-            </IonItem>
-
-            <IonButton
-              expand="block"
-              type="submit"
-              className="ion-margin-top"
-              disabled={loading}
-            >
-              {loading ? "Resetting..." : "Reset password"}
-            </IonButton>
-          </form>
-
-          {showCodeForm && (
-            <div className="ion-text-center ion-margin-top">
-              <Link to="/forgot-password">Request new code</Link>
-              {" · "}
-              <Link to="/login">Sign In</Link>
-            </div>
+            </>
           )}
+          <RrField
+            label="New password"
+            inputProps={{
+              id: 'reset-new-password',
+              type: 'password',
+              name: 'new-password',
+              autoComplete: 'new-password',
+              value: newPassword,
+              placeholder: '********',
+              required: true,
+              onChange: (e) => setNewPassword(e.target.value),
+            }}
+          />
+          <RrField
+            label="Confirm password"
+            inputProps={{
+              id: 'reset-confirm-password',
+              type: 'password',
+              name: 'confirm-password',
+              autoComplete: 'new-password',
+              value: confirmPassword,
+              placeholder: '********',
+              required: true,
+              onChange: (e) => setConfirmPassword(e.target.value),
+            }}
+          />
+        </RrWin>
 
-          {!showCodeForm && (
-            <div className="ion-text-center ion-margin-top">
-              <IonText color="medium">
-                <Link to="/login">Back to Sign In</Link>
-              </IonText>
-            </div>
-          )}
-        </div>
+        <RrWin tag="COMMAND" className="auth-screen__cmd-win">
+          <RrCmdButton type="submit" disabled={loading} showCursor={!loading}>
+            {loading ? 'RESETTING...' : 'RESET PASSWORD'}
+          </RrCmdButton>
+        </RrWin>
+      </form>
 
-        <IonLoading isOpen={loading} message="Resetting password..." />
-        <IonAlert
-          isOpen={showAlert}
-          onDidDismiss={() => setShowAlert(false)}
-          header="Reset failed"
-          message={error}
-          buttons={["OK"]}
-        />
-      </IonContent>
-    </IonPage>
+      <nav className="auth-screen__nav">
+        {showCodeForm && <AuthNavLink to="/forgot-password">Request new code</AuthNavLink>}
+        <AuthNavLink to="/login">Back to sign in</AuthNavLink>
+      </nav>
+
+      <IonAlert
+        cssClass="rr-alert"
+        isOpen={showAlert}
+        onDidDismiss={() => setShowAlert(false)}
+        header="Reset failed"
+        message={error}
+        buttons={['OK']}
+      />
+    </AuthScreenShell>
   );
 };
 
