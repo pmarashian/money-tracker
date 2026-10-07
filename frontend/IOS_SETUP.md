@@ -1,5 +1,11 @@
 # iOS Setup and Plugin Sync
 
+## Xcode 27 / UIScene lifecycle
+
+This project uses Capacitor 8.5+ with `SceneDelegate` and `UIApplicationSceneManifest` in `Info.plist` (required when building against the iOS 27 SDK). Deep links (`moneytracker://`) are forwarded via `SceneDelegateProxy` so `@capacitor/app` (`appUrlOpen`, `getLaunchUrl`) keeps working.
+
+After pulling changes that touch iOS native code or Capacitor versions, run `npm run cap:sync` from `frontend/`, then in Xcode use **File → Packages → Resolve Package Versions** before building.
+
 ## Important: After Adding/Updating Capacitor Plugins
 
 When you add or update Capacitor plugins (like `@capacitor/preferences`), you **must** sync them to the iOS project and rebuild:
