@@ -266,12 +266,7 @@ const Home: React.FC = () => {
               variant={lowVariant}
               label={`Projected low · ${formatDateOnly(snapshot.projected_low_to_bonus.date)}`}
               value={formatCurrency(snapshot.projected_low_to_bonus.amount)}
-            />
-            <StatCard
-              variant="bonus"
-              label="Next bonus"
-              value={formatDateOnly(snapshot.next_bonus_date)}
-              span2={showTopoffNow}
+              span2={!showTopoffNow}
             />
           </div>
 
