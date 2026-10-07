@@ -218,6 +218,99 @@ ion-page ion-content {
   text-align: center;
 }
 
+/* Full-page retro backgrounds (app tabs only) */
+.app-route-background {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-color: #000;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center bottom;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  pointer-events: none;
+}
+
+#main.app-main--with-bg {
+  position: relative;
+  z-index: 1;
+  background: transparent !important;
+}
+
+#main.app-main--plain-black {
+  background: #000 !important;
+}
+
+#main.app-main--with-bg ion-content {
+  --background: transparent;
+}
+
+#main.app-main--with-bg ion-toolbar {
+  --background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+body[data-app-background='1'] .app-tab-bar {
+  --background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+#main.app-main--with-bg ion-card:not(.home-stat-card) {
+  --background: rgba(10, 10, 16, 0.9);
+}
+
+.background-picker {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.background-picker__option {
+  border: 2px solid var(--ion-color-step-400);
+  border-radius: 10px;
+  padding: 0.35rem;
+  background: rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  width: 100%;
+}
+
+.background-picker__option--selected {
+  border-color: var(--ion-color-primary);
+  box-shadow: 0 0 0 1px var(--ion-color-primary);
+}
+
+.background-picker__thumb {
+  width: 100%;
+  aspect-ratio: 9 / 19;
+  border-radius: 6px;
+  background-color: #000;
+  background-size: cover;
+  background-position: center bottom;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.background-picker__thumb--none {
+  background: linear-gradient(180deg, #111 0%, #000 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ion-color-medium);
+  font-size: 0.75rem;
+}
+
+.background-picker__label {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: 0.85rem;
+  line-height: 1.25;
+}
+
 .expense-marker {
   margin-left: 0.35rem;
   vertical-align: middle;
