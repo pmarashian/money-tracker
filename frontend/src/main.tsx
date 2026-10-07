@@ -26,6 +26,7 @@ import "./theme/variables.css";
 
 /* Dark Minimalist Theme */
 import "./theme/dark-minimalist.css";
+import "./theme/rr-retro.css";
 
 setupIonicReact();
 

@@ -4,23 +4,17 @@ import {
   IonPage,
   IonTitle,
   IonToolbar,
-  IonCard,
-  IonCardContent,
   IonSpinner,
-  IonText,
-  IonButton,
   IonModal,
-  IonInput,
-  IonItem,
-  IonLabel,
-  IonSelect,
-  IonSelectOption,
   IonAlert,
-  IonBadge,
 } from '@ionic/react';
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { apiGet, apiPost, apiPatch, apiDelete } from '../lib/api';
+import { RrWin } from '../components/rr/RrWin';
+import { RrField } from '../components/rr/RrField';
+import { RrMenuPicker } from '../components/rr/RrMenuPicker';
+import { RrCmdButton } from '../components/rr/RrCmdButton';
 
 interface RecurringPattern {
   name: string;
@@ -33,6 +27,18 @@ interface RecurringPattern {
   paused?: boolean;
   externalKey?: string;
   nextDate?: string;
+}
+
+const FREQUENCY_OPTIONS: { value: RecurringPattern['frequency']; label: string }[] = [
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'biweekly', label: 'Bi-weekly' },
+];
+
+function expenseSourceTag(expense: RecurringPattern): string | undefined {
+  if (expense.userEdited || expense.source === 'manual') return 'EDITED';
+  if (expense.source === 'auto') return 'AUTO';
+  return undefined;
 }
 
 const Expenses: React.FC = () => {
@@ -193,19 +199,9 @@ const Expenses: React.FC = () => {
     }
   };
 
-  const itemMarker = (expense: RecurringPattern) => {
-    if (expense.userEdited || expense.source === 'manual') {
-      return <IonBadge color="tertiary" className="expense-marker">edited</IonBadge>;
-    }
-    if (expense.source === 'auto') {
-      return <IonBadge color="medium" className="expense-marker">auto</IonBadge>;
-    }
-    return null;
-  };
-
   if (loading) {
     return (
-      <IonPage>
+      <IonPage className="rr-app">
         <IonHeader>
           <IonToolbar>
             <IonTitle>Expenses</IonTitle>
@@ -214,7 +210,7 @@ const Expenses: React.FC = () => {
         <IonContent className="ion-text-center">
           <div className="ion-padding">
             <IonSpinner name="crescent" />
-            <p className="font-body">Loading recurring expenses...</p>
+            <p className="rr-lead">Loading recurring expenses...</p>
           </div>
         </IonContent>
       </IonPage>
@@ -223,7 +219,7 @@ const Expenses: React.FC = () => {
 
   if (error) {
     return (
-      <IonPage>
+      <IonPage className="rr-app">
         <IonHeader>
           <IonToolbar>
             <IonTitle>Expenses</IonTitle>
@@ -231,10 +227,7 @@ const Expenses: React.FC = () => {
         </IonHeader>
         <IonContent>
           <div className="ion-padding">
-            <IonText color="danger">
-              <h2>Error loading expenses</h2>
-              <p>{error}</p>
-            </IonText>
+            <p className="rr-danger rr-fs-m">{error}</p>
           </div>
         </IonContent>
       </IonPage>
@@ -242,7 +235,7 @@ const Expenses: React.FC = () => {
   }
 
   return (
-    <IonPage>
+    <IonPage className="rr-app">
       <IonHeader>
         <IonToolbar>
           <IonTitle>Expenses</IonTitle>
@@ -250,149 +243,146 @@ const Expenses: React.FC = () => {
       </IonHeader>
       <IonContent>
         <div className="ion-padding">
-          <p className="font-body expenses-intro">
+          <p className="rr-lead">
             Bills used by your projection. Your edits are never overwritten by sync.
           </p>
 
-          <IonButton expand="block" className="ion-margin-bottom" onClick={openAdd}>
+          <RrCmdButton className="expenses-page__add-gap" onClick={openAdd}>
             Add recurring expense
-          </IonButton>
+          </RrCmdButton>
 
           {visibleExpenses.length === 0 ? (
             <div className="ion-text-center ion-padding">
-              <IonText color="medium">
-                <h3>No active expenses</h3>
-                <p>Add a bill manually or sync from your assistant script.</p>
-              </IonText>
+              <p className="rr-lead">No active expenses.</p>
+              <p className="rr-lead">Add a bill or sync from your assistant.</p>
             </div>
           ) : (
-            <div className="expenses-list">
+            <div className="expenses-list rr-stack">
               {[...visibleExpenses]
                 .sort((a, b) => a.expense.name.localeCompare(b.expense.name, undefined, { sensitivity: 'base' }))
                 .map(({ expense, index }) => (
-                  <IonCard
+                  <RrWin
                     key={`${expense.externalKey ?? expense.name}-${index}`}
-                    className={`expense-item${expense.paused ? ' expense-item--paused' : ''}`}
+                    tag={expenseSourceTag(expense)}
+                    className={expense.paused ? 'mt-expense--paused' : undefined}
                   >
-                    <IonCardContent className="expense-item__content">
-                      <div className="expense-item__row expense-item__row--main">
-                        <span className="font-heading expense-item__name">
-                          {expense.name} {itemMarker(expense)}
-                        </span>
-                        <span className="font-body expense-item__amount">{formatCurrency(expense.amount)}</span>
-                      </div>
-                      <p className="expense-item__schedule font-body">
-                        {formatFrequency(expense.frequency)}
-                        {expense.typicalDayOfMonth != null && ` · Day ${expense.typicalDayOfMonth}`}
-                        {expense.paused && ' · Paused'}
-                      </p>
-                      <div className="expense-item__actions">
-                        <IonButton
-                          fill="outline"
-                          size="small"
-                          className="expense-item__action-btn"
-                          onClick={() => togglePaused(index)}
-                        >
-                          {expense.paused ? 'Resume' : 'Pause'}
-                        </IonButton>
-                        <IonButton
-                          fill="outline"
-                          size="small"
-                          className="expense-item__action-btn"
-                          onClick={() => openEdit(index)}
-                        >
-                          Edit
-                        </IonButton>
-                        <IonButton
-                          fill="outline"
-                          color="danger"
-                          size="small"
-                          className="expense-item__action-btn"
-                          onClick={() => setDeleteIndex(index)}
-                        >
-                          Delete
-                        </IonButton>
-                      </div>
-                    </IonCardContent>
-                  </IonCard>
+                    <div className="mt-expense__head">
+                      <h2 className="mt-expense__vendor">{expense.name}</h2>
+                      <span className="mt-expense__amount">{formatCurrency(expense.amount)}</span>
+                    </div>
+                    <p className="mt-expense__schedule">
+                      {formatFrequency(expense.frequency)}
+                      {expense.typicalDayOfMonth != null && ` · Day ${expense.typicalDayOfMonth}`}
+                      {expense.paused && ' · Paused'}
+                    </p>
+                    <div className="rr-cmd-row rr-cmd-row--horizontal mt-expense__actions" role="group">
+                      <RrCmdButton showCursor onClick={() => togglePaused(index)}>
+                        {expense.paused ? 'Resume' : 'Pause'}
+                      </RrCmdButton>
+                      <RrCmdButton showCursor={false} onClick={() => openEdit(index)}>
+                        Edit
+                      </RrCmdButton>
+                      <RrCmdButton
+                        variant="danger"
+                        showCursor={false}
+                        onClick={() => setDeleteIndex(index)}
+                      >
+                        Delete
+                      </RrCmdButton>
+                    </div>
+                  </RrWin>
                 ))}
             </div>
           )}
         </div>
 
-        <IonModal isOpen={showModal} onDidDismiss={closeModal}>
-          <IonHeader>
-            <IonToolbar>
-              <IonTitle>{editingIndex !== null ? 'Edit recurring expense' : 'Add recurring expense'}</IonTitle>
-              <IonButton slot="end" fill="clear" onClick={closeModal}>Cancel</IonButton>
-            </IonToolbar>
-          </IonHeader>
-          <IonContent className="ion-padding">
-            <form onSubmit={handleSubmit}>
-              {formError && (
-                <IonText color="danger" className="ion-margin-bottom">
-                  <p>{formError}</p>
-                </IonText>
-              )}
-              <IonItem>
-                <IonLabel position="stacked">Name</IonLabel>
-                <IonInput
-                  type="text"
-                  value={formName}
-                  onIonInput={(e) => setFormName(e.detail.value ?? '')}
-                  placeholder="e.g. Rent"
-                  required
-                />
-              </IonItem>
-              <IonItem>
-                <IonLabel position="stacked">Amount ($)</IonLabel>
-                <IonInput
-                  type="number"
-                  inputMode="decimal"
-                  min="0"
-                  step="0.01"
-                  value={formAmount}
-                  onIonInput={(e) => setFormAmount(e.detail.value ?? '')}
-                  placeholder="0.00"
-                  required
-                />
-              </IonItem>
-              <IonItem>
-                <IonLabel position="stacked">Frequency</IonLabel>
-                <IonSelect
-                  value={formFrequency}
-                  onIonChange={(e) => setFormFrequency(e.detail.value as RecurringPattern['frequency'])}
-                  placeholder="Select"
-                >
-                  <IonSelectOption value="monthly">Monthly</IonSelectOption>
-                  <IonSelectOption value="weekly">Weekly</IonSelectOption>
-                  <IonSelectOption value="biweekly">Bi-weekly</IonSelectOption>
-                </IonSelect>
-              </IonItem>
-              {formFrequency === 'monthly' && (
-                <IonItem>
-                  <IonLabel position="stacked">Day of month (optional)</IonLabel>
-                  <IonInput
-                    type="number"
-                    min={1}
-                    max={31}
-                    value={formDayOfMonth}
-                    onIonInput={(e) => setFormDayOfMonth(e.detail.value ?? '')}
-                    placeholder="1–31"
-                  />
-                </IonItem>
-              )}
-              <IonButton expand="block" type="submit" className="ion-margin-top" disabled={submitLoading}>
-                {submitLoading ? 'Saving...' : editingIndex !== null ? 'Save' : 'Add'}
-              </IonButton>
-            </form>
-          </IonContent>
+        <IonModal
+          isOpen={showModal}
+          onDidDismiss={closeModal}
+          className="rr-modal expense-form-modal"
+          animated={false}
+        >
+          <IonPage className="rr-app">
+            <IonContent>
+              <div className="expense-form-modal__body">
+                <RrWin tag={editingIndex !== null ? 'EDIT BILL' : 'NEW BILL'}>
+                  <form id="expense-form" className="expense-form-modal__form" onSubmit={handleSubmit}>
+                    {formError && <p className="rr-danger rr-fs-m">{formError}</p>}
+                    <RrField
+                      label="Name"
+                      inputProps={{
+                        id: 'expense-name',
+                        type: 'text',
+                        value: formName,
+                        placeholder: 'e.g. Rent',
+                        required: true,
+                        onChange: (e) => setFormName(e.target.value),
+                      }}
+                    />
+                    <RrField
+                      label="Amount ($)"
+                      inputProps={{
+                        id: 'expense-amount',
+                        type: 'number',
+                        inputMode: 'decimal',
+                        min: 0,
+                        step: '0.01',
+                        value: formAmount,
+                        placeholder: '0.00',
+                        required: true,
+                        onChange: (e) => setFormAmount(e.target.value),
+                      }}
+                    />
+                    <div className="rr-field">
+                      <span className="rr-field__label">Frequency</span>
+                      <RrMenuPicker
+                        ariaLabel="Bill frequency"
+                        value={formFrequency}
+                        options={FREQUENCY_OPTIONS}
+                        onChange={setFormFrequency}
+                      />
+                    </div>
+                    {formFrequency === 'monthly' && (
+                      <RrField
+                        label="Day of month (optional)"
+                        inputProps={{
+                          id: 'expense-day',
+                          type: 'number',
+                          min: 1,
+                          max: 31,
+                          value: formDayOfMonth,
+                          placeholder: '1-31',
+                          onChange: (e) => setFormDayOfMonth(e.target.value),
+                        }}
+                      />
+                    )}
+                  </form>
+                </RrWin>
+                <RrWin tag="COMMAND" className="expense-form-modal__cmd-win">
+                  <div className="rr-cmd-row rr-cmd-row--horizontal expense-form-modal__actions" role="group">
+                    <RrCmdButton
+                      type="submit"
+                      form="expense-form"
+                      disabled={submitLoading}
+                      showCursor={!submitLoading}
+                    >
+                      {submitLoading ? 'Saving...' : editingIndex !== null ? 'Save' : 'Add'}
+                    </RrCmdButton>
+                    <RrCmdButton showCursor={false} onClick={closeModal}>
+                      Cancel
+                    </RrCmdButton>
+                  </div>
+                </RrWin>
+              </div>
+            </IonContent>
+          </IonPage>
         </IonModal>
 
         <IonAlert
+          cssClass="rr-alert"
           isOpen={deleteIndex !== null}
           onDidDismiss={() => setDeleteIndex(null)}
-          header="Delete recurring expense?"
+          header="Delete bill?"
           message="This cannot be undone."
           buttons={[
             'Cancel',

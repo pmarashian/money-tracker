@@ -5,17 +5,13 @@ import {
   IonPage,
   IonTitle,
   IonToolbar,
-  IonCard,
-  IonCardHeader,
-  IonCardTitle,
-  IonCardContent,
   IonSpinner,
-  IonText,
 } from '@ionic/react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { apiGet } from '../lib/api';
 import { parseDateOnlyAsLocal } from '../lib/dateUtils';
+import { RrWin } from '../components/rr/RrWin';
 
 const NY_TZ = 'America/New_York';
 
@@ -45,30 +41,6 @@ interface SnapshotResponse {
   received_at: string | null;
   stale: boolean;
 }
-
-type StatCardVariant = 'hero-ok' | 'hero-bad' | 'topoff';
-
-const StatCard: React.FC<{
-  variant: StatCardVariant;
-  label: string;
-  value: string;
-  hero?: boolean;
-  span2?: boolean;
-}> = ({ variant, label, value, hero, span2 }) => (
-  <div
-    className={[
-      'home-stat-card',
-      `home-stat-card--${variant}`,
-      hero ? 'home-stat-card--hero' : '',
-      span2 ? 'home-stat-card--span-2' : '',
-    ]
-      .filter(Boolean)
-      .join(' ')}
-  >
-    <div className="home-stat-card__label">{label}</div>
-    <div className="home-stat-card__value">{value}</div>
-  </div>
-);
 
 const Home: React.FC = () => {
   const location = useLocation();
@@ -123,7 +95,7 @@ const Home: React.FC = () => {
 
   if (authLoading || loading) {
     return (
-      <IonPage>
+      <IonPage className="rr-app">
         <IonHeader>
           <IonToolbar>
             <IonTitle>Money Tracker</IonTitle>
@@ -131,9 +103,7 @@ const Home: React.FC = () => {
         </IonHeader>
         <IonContent className="ion-padding ion-text-center">
           <IonSpinner name="crescent" />
-          <IonText color="medium">
-            <p>Loading your snapshot...</p>
-          </IonText>
+          <p className="rr-lead">Loading your snapshot...</p>
         </IonContent>
       </IonPage>
     );
@@ -141,14 +111,14 @@ const Home: React.FC = () => {
 
   if (!user) {
     return (
-      <IonPage>
+      <IonPage className="rr-app">
         <IonHeader>
           <IonToolbar>
             <IonTitle>Money Tracker</IonTitle>
           </IonToolbar>
         </IonHeader>
         <IonContent className="ion-padding">
-          <p className="font-body">Please log in to view your finances.</p>
+          <p className="rr-lead">Please log in to view your finances.</p>
         </IonContent>
       </IonPage>
     );
@@ -156,20 +126,16 @@ const Home: React.FC = () => {
 
   if (error) {
     return (
-      <IonPage>
+      <IonPage className="rr-app">
         <IonHeader>
           <IonToolbar>
             <IonTitle>Money Tracker</IonTitle>
           </IonToolbar>
         </IonHeader>
         <IonContent className="ion-padding">
-          <IonCard color="danger">
-            <IonCardContent>
-              <IonText color="danger">
-                <p>{error}</p>
-              </IonText>
-            </IonCardContent>
-          </IonCard>
+          <RrWin tag="ERROR">
+            <p className="rr-danger rr-fs-m">{error}</p>
+          </RrWin>
         </IonContent>
       </IonPage>
     );
@@ -179,24 +145,19 @@ const Home: React.FC = () => {
 
   if (!snapshot) {
     return (
-      <IonPage>
+      <IonPage className="rr-app">
         <IonHeader>
           <IonToolbar>
             <IonTitle>Money Tracker</IonTitle>
           </IonToolbar>
         </IonHeader>
         <IonContent className="ion-padding">
-          <IonCard color="medium">
-            <IonCardHeader>
-              <IonCardTitle>No snapshot yet</IonCardTitle>
-            </IonCardHeader>
-            <IonCardContent>
-              <p className="font-body">
-                Your assistant has not pushed a financial snapshot yet. Once the first push
-                lands, your key balances will show here.
-              </p>
-            </IonCardContent>
-          </IonCard>
+          <RrWin tag="HOME">
+            <p className="rr-lead">
+              Your assistant has not pushed a financial snapshot yet. Once the first push lands,
+              your key balances will show here.
+            </p>
+          </RrWin>
         </IonContent>
       </IonPage>
     );
@@ -204,63 +165,54 @@ const Home: React.FC = () => {
 
   const asOfDisplay = snapshotResponse?.as_of ?? snapshot.as_of;
   const showTopoffNow = snapshot.topoff_needed_now > 0;
-  const minBalance =
-    typeof snapshot.min_balance === 'number' && Number.isFinite(snapshot.min_balance)
-      ? snapshot.min_balance
-      : 0;
   const beforeBonus = snapshot.balance_before_next_bonus;
-  const heroVariant: StatCardVariant =
-    beforeBonus && beforeBonus.amount >= minBalance ? 'hero-ok' : 'hero-bad';
   const statusClass =
     snapshot.status === 'on_track' ? 'home-snapshot__status--ok' : 'home-snapshot__status--warn';
 
   return (
-    <IonPage>
+    <IonPage className="rr-app">
       <IonHeader>
         <IonToolbar>
           <IonTitle>Money Tracker</IonTitle>
         </IonToolbar>
       </IonHeader>
       <IonContent>
-        <div className="ion-padding home-snapshot">
+        <div className="home-snapshot rr-stack">
           {snapshotResponse?.stale && (
-            <IonCard color="warning" className="home-snapshot__stale">
-              <IonCardContent>
-                <IonText>
-                  <p className="font-body">
-                    Snapshot is over 3 days old (as of {formatAsOfNy(asOfDisplay)}). Ask your
-                    assistant to push an update.
-                  </p>
-                </IonText>
-              </IonCardContent>
-            </IonCard>
+            <RrWin tag="STALE">
+              <p className="rr-lead">
+                Snapshot is over 3 days old (as of {formatAsOfNy(asOfDisplay)}). Ask your assistant
+                to push an update.
+              </p>
+            </RrWin>
           )}
 
           <div className="home-snapshot__status-row">
             <span className="home-snapshot__status-label">Status</span>
-            <span className={`home-snapshot__status-badge ${statusClass}`}>
+            <span className={`home-snapshot__status-tag ${statusClass}`}>
               {statusLabel(snapshot.status)}
             </span>
           </div>
 
           {beforeBonus && (
-            <StatCard
-              variant={heroVariant}
-              label={`Balance before next bonus · ${formatShortDate(beforeBonus.date)}`}
-              value={formatCurrency(beforeBonus.amount)}
-              hero
-            />
+            <RrWin tag="BALANCE" className="home-hero-win">
+              <p className="rr-hero-label">
+                Before next bonus · {formatShortDate(beforeBonus.date)}
+              </p>
+              <p className="rr-hero-value">{formatCurrency(beforeBonus.amount)}</p>
+            </RrWin>
           )}
 
           {showTopoffNow && (
-            <StatCard
-              variant="topoff"
-              label={`Top off by ${formatShortDate(snapshot.projected_low_to_bonus.date)}`}
-              value={formatCurrency(snapshot.topoff_needed_now)}
-            />
+            <RrWin tag="TOP OFF" className="home-hero-win">
+              <p className="rr-hero-label">
+                Top off by {formatShortDate(snapshot.projected_low_to_bonus.date)}
+              </p>
+              <p className="rr-hero-value">{formatCurrency(snapshot.topoff_needed_now)}</p>
+            </RrWin>
           )}
 
-          <p className="home-snapshot__updated">
+          <p className="home-snapshot__updated rr-fs-s">
             Updated {formatAsOfNy(asOfDisplay)} (New York)
           </p>
         </div>

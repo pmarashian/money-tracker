@@ -4,16 +4,7 @@ import {
   IonPage,
   IonTitle,
   IonToolbar,
-  IonItem,
-  IonLabel,
-  IonInput,
-  IonButton,
-  IonCard,
-  IonCardHeader,
-  IonCardTitle,
-  IonCardContent,
   IonSpinner,
-  IonText,
   IonToast,
 } from '@ionic/react';
 import { useState, useEffect } from 'react';
@@ -21,7 +12,11 @@ import { useNavigate } from 'react-router-dom';
 import { apiGet, apiPatch } from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
 import { useAppBackground } from '../hooks/useAppBackground';
-import { BACKGROUND_OPTIONS, type BackgroundId } from '../lib/appBackgrounds';
+import { BackgroundPickerCarousel } from '../components/BackgroundPickerCarousel';
+import { RrWin } from '../components/rr/RrWin';
+import { RrField } from '../components/rr/RrField';
+import { RrCmdButton } from '../components/rr/RrCmdButton';
+import type { BackgroundId } from '../lib/appBackgrounds';
 
 interface UserSettings {
   paycheckAmount: number;
@@ -118,158 +113,106 @@ const Settings: React.FC = () => {
 
   if (loading) {
     return (
-      <IonPage>
+      <IonPage className="rr-app">
         <IonContent className="ion-padding ion-text-center">
           <IonSpinner name="crescent" />
-          <IonText color="medium">
-            <p className="font-body">Loading settings...</p>
-          </IonText>
+          <p className="rr-lead">Loading settings...</p>
         </IonContent>
       </IonPage>
     );
   }
 
   return (
-    <IonPage>
+    <IonPage className="rr-app">
       <IonHeader>
         <IonToolbar>
           <IonTitle>Settings</IonTitle>
         </IonToolbar>
       </IonHeader>
       <IonContent>
-        <div className="ion-padding">
-          <p className="font-body" style={{ marginBottom: '1.25rem' }}>
-            Control panel for your projection inputs. Balances and forecasts come from your
-            assistant&apos;s snapshot pushes.
+        <div className="rr-stack">
+          <p className="rr-lead">
+            Control panel for projection inputs. Balances come from snapshot pushes.
           </p>
 
-          <IonCard className="settings-section-card">
-            <IonCardHeader>
-              <IonCardTitle className="font-heading">Background</IonCardTitle>
-            </IonCardHeader>
-            <IonCardContent>
-              <p className="font-body" style={{ marginBottom: '0.5rem' }}>
-                Full-page pixel art behind the app tabs. Scenery anchors to the bottom of the screen.
-              </p>
-              <div className="background-picker" role="listbox" aria-label="Background">
-                {BACKGROUND_OPTIONS.map((option) => {
-                  const selected = backgroundId === option.id;
-                  return (
-                    <button
-                      key={option.id}
-                      type="button"
-                      role="option"
-                      aria-selected={selected}
-                      className={`background-picker__option${selected ? ' background-picker__option--selected' : ''}`}
-                      onClick={() => setBackgroundId(option.id as BackgroundId)}
-                    >
-                      {option.src ? (
-                        <div
-                          className="background-picker__thumb"
-                          style={{ backgroundImage: `url(${option.src})` }}
-                        />
-                      ) : (
-                        <div className="background-picker__thumb background-picker__thumb--none">Black</div>
-                      )}
-                      <span className="background-picker__label font-body">{option.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </IonCardContent>
-          </IonCard>
+          <RrWin tag="BACKGROUND">
+            <p className="rr-label" style={{ marginBottom: 8 }}>
+              Pixel art behind tabs. Scenery anchors to the bottom.
+            </p>
+            <BackgroundPickerCarousel
+              backgroundId={backgroundId}
+              onSelect={(id: BackgroundId) => setBackgroundId(id)}
+            />
+          </RrWin>
 
-          <IonCard className="settings-section-card">
-            <IonCardHeader>
-              <IonCardTitle className="font-heading">Income</IonCardTitle>
-            </IonCardHeader>
-            <IonCardContent>
-              <IonItem>
-                <IonLabel position="stacked" className="font-body">
-                  Paycheck amount ($)
-                </IonLabel>
-                <IonInput
-                  type="number"
-                  inputMode="decimal"
-                  value={settings.paycheckAmount}
-                  placeholder="2000.00"
-                  onIonInput={(e) =>
-                    setSettings({
-                      paycheckAmount: parseFloat((e.detail.value as string) || '0') || 0,
-                    })
-                  }
-                  step="0.01"
-                  min="0"
-                />
-              </IonItem>
-              <IonButton
-                expand="block"
-                className="ion-margin-top"
-                onClick={saveSettings}
-                disabled={saving}
-              >
-                {saving ? 'Saving...' : 'Save paycheck amount'}
-              </IonButton>
-            </IonCardContent>
-          </IonCard>
+          <RrWin tag="INCOME">
+            <RrField
+              label="Paycheck amount ($)"
+              inputProps={{
+                id: 'paycheck-amount',
+                type: 'number',
+                inputMode: 'decimal',
+                value: String(settings.paycheckAmount),
+                placeholder: '2000.00',
+                step: '0.01',
+                min: 0,
+                onChange: (e) =>
+                  setSettings({
+                    paycheckAmount: parseFloat(e.target.value || '0') || 0,
+                  }),
+              }}
+            />
+            <RrCmdButton onClick={saveSettings} disabled={saving} showCursor={!saving}>
+              {saving ? 'Saving...' : 'Save paycheck'}
+            </RrCmdButton>
+          </RrWin>
 
-          <IonCard className="settings-section-card settings-section-card--account">
-            <IonCardHeader>
-              <IonCardTitle className="font-heading">Account</IonCardTitle>
-            </IonCardHeader>
-            <IonCardContent>
-              <IonItem>
-                <IonLabel position="stacked" className="font-body">New password</IonLabel>
-                <IonInput
-                  type="password"
-                  value={newPassword}
-                  placeholder="Enter new password"
-                  onIonInput={(e) => setNewPassword(e.detail.value ?? '')}
-                  disabled={passwordChanging}
-                />
-              </IonItem>
-              <IonItem>
-                <IonLabel position="stacked" className="font-body">Confirm password</IonLabel>
-                <IonInput
-                  type="password"
-                  value={confirmPassword}
-                  placeholder="Confirm new password"
-                  onIonInput={(e) => setConfirmPassword(e.detail.value ?? '')}
-                  disabled={passwordChanging}
-                />
-              </IonItem>
-              {passwordError && (
-                <IonText color="danger" className="font-body" style={{ display: 'block', marginTop: '0.5rem' }}>
-                  {passwordError}
-                </IonText>
-              )}
-              <IonButton
-                expand="block"
-                className="ion-margin-top"
-                onClick={handlePasswordChange}
-                disabled={
-                  passwordChanging ||
-                  !newPassword ||
-                  !confirmPassword ||
-                  newPassword.length < 6 ||
-                  newPassword !== confirmPassword
-                }
-              >
-                {passwordChanging ? 'Changing password...' : 'Change password'}
-              </IonButton>
-              <IonButton
-                expand="block"
-                color="danger"
-                className="ion-margin-top"
-                onClick={async () => {
-                  await logout();
-                  navigate('/login');
-                }}
-              >
-                Logout
-              </IonButton>
-            </IonCardContent>
-          </IonCard>
+          <RrWin tag="ACCOUNT">
+            <RrField
+              label="New password"
+              inputProps={{
+                id: 'new-password',
+                type: 'password',
+                value: newPassword,
+                placeholder: 'Enter new password',
+                disabled: passwordChanging,
+                onChange: (e) => setNewPassword(e.target.value),
+              }}
+            />
+            <RrField
+              label="Confirm password"
+              inputProps={{
+                id: 'confirm-password',
+                type: 'password',
+                value: confirmPassword,
+                placeholder: 'Confirm new password',
+                disabled: passwordChanging,
+                onChange: (e) => setConfirmPassword(e.target.value),
+              }}
+            />
+            {passwordError && <p className="rr-danger rr-fs-m">{passwordError}</p>}
+            <RrCmdButton
+              onClick={handlePasswordChange}
+              disabled={
+                passwordChanging ||
+                !newPassword ||
+                !confirmPassword ||
+                newPassword.length < 6 ||
+                newPassword !== confirmPassword
+              }
+            >
+              {passwordChanging ? 'Changing...' : 'Change password'}
+            </RrCmdButton>
+            <RrCmdButton
+              variant="danger"
+              onClick={async () => {
+                await logout();
+                navigate('/login');
+              }}
+            >
+              Logout
+            </RrCmdButton>
+          </RrWin>
         </div>
 
         <IonToast
