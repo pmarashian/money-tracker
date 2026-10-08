@@ -1,108 +1,19 @@
 import type { ReactNode } from 'react';
+import {
+  COIN_ART_PX,
+  COIN_FRAME_PX,
+  COIN_PALETTE,
+  COIN_SLOT_PX,
+  COIN_STRIP_PX,
+  FRAME_PIXELS,
+} from './retroCoinArt';
 
-/** 16×16 NES-style coin frames (face → 3/4 → edge → 3/4). */
-
-const C = {
-  _: '',
-  O: '#1a0800',
-  D: '#d82800',
-  G: '#f8b800',
-  H: '#fcfcfc',
-  S: '#f87858',
-  E: '#bcbcbc',
-} as const;
-
-type Ch = keyof typeof C;
-
-const FRAME_FACE: Ch[][] = [
-  '________________',
-  '____OOOOOOOO____',
-  '___OOGGGGGGOO___',
-  '__OOGGGGGGGGOO__',
-  '_OOGGGHGGGHGGGO_',
-  'OOGGGDOOGGDOOGGO',
-  'OOGGO____OOGGOO_',
-  'OOGGGGDDGGGGGOO_',
-  'OOGGGGDDGGGGGOO_',
-  'OOGGO____OOGGOO_',
-  'OOGGGDOOGGDOOGGO',
-  '_OOGGGHGGGHGGGO_',
-  '__OOGGGGGGGGOO__',
-  '___OOGGGGGGOO___',
-  '____OOOOOOOO____',
-  '________________',
-].map((row) => row.split('').map((ch) => ch as Ch));
-
-const FRAME_THREE_Q: Ch[][] = [
-  '________________',
-  '_____OOOOO______',
-  '_____OGGGGO_____',
-  '_____OGGHGO_____',
-  '_____OGGGGO_____',
-  '_____OGGGGO_____',
-  '_____OGGGGO_____',
-  '_____OGGGGO_____',
-  '_____OGGGGO_____',
-  '_____OGGGGO_____',
-  '_____OGGHGO_____',
-  '_____OGGGGO_____',
-  '_____OGGGGO_____',
-  '_____OOOOO______',
-  '________________',
-  '________________',
-].map((row) => row.split('').map((ch) => ch as Ch));
-
-const FRAME_EDGE: Ch[][] = [
-  '________________',
-  '______OO________',
-  '______OEO_______',
-  '______OEO_______',
-  '______OEO_______',
-  '______OEO_______',
-  '______OEO_______',
-  '______OEO_______',
-  '______OEO_______',
-  '______OEO_______',
-  '______OEO_______',
-  '______OEO_______',
-  '______OO________',
-  '________________',
-  '________________',
-  '________________',
-].map((row) => row.split('').map((ch) => ch as Ch));
-
-const FRAME_THREE_Q_L: Ch[][] = [
-  '________________',
-  '_____OOOOO______',
-  '_____OGGGGO_____',
-  '_____OGHGOO_____',
-  '_____OGGGGO_____',
-  '_____OGGGGO_____',
-  '_____OGGGGO_____',
-  '_____OGGGGO_____',
-  '_____OGGGGO_____',
-  '_____OGGGGO_____',
-  '_____OGHGOO_____',
-  '_____OGGGGO_____',
-  '_____OGGGGO_____',
-  '_____OOOOO______',
-  '________________',
-  '________________',
-].map((row) => row.split('').map((ch) => ch as Ch));
-
-const FRAMES = [FRAME_FACE, FRAME_THREE_Q, FRAME_EDGE, FRAME_THREE_Q_L];
-
-const FRAME_PX = 16;
-const DISPLAY_PX = 64;
-const SCALE = DISPLAY_PX / FRAME_PX;
-const STRIP_W = FRAME_PX * FRAMES.length;
-
-function frameRects(frame: Ch[][], offsetX: number) {
+function frameRects(frame: string[], offsetX = 0) {
   const rects: ReactNode[] = [];
   frame.forEach((row, y) => {
-    row.forEach((ch, x) => {
-      const fill = C[ch];
-      if (!fill) return;
+    for (let x = 0; x < COIN_ART_PX; x += 1) {
+      const fill = COIN_PALETTE[row[x]];
+      if (!fill) continue;
       rects.push(
         <rect
           key={`${offsetX}-${x}-${y}`}
@@ -113,24 +24,9 @@ function frameRects(frame: Ch[][], offsetX: number) {
           fill={fill}
         />
       );
-    });
+    }
   });
   return rects;
-}
-
-function SingleFrameSvg({ frame, className }: { frame: Ch[][]; className?: string }) {
-  return (
-    <svg
-      className={className}
-      viewBox={`0 0 ${FRAME_PX} ${FRAME_PX}`}
-      width={DISPLAY_PX}
-      height={DISPLAY_PX}
-      shapeRendering="crispEdges"
-      aria-hidden
-    >
-      {frameRects(frame, 0)}
-    </svg>
-  );
 }
 
 type RetroCoinSpriteProps = {
@@ -139,29 +35,36 @@ type RetroCoinSpriteProps = {
 
 export function RetroCoinSprite({ mode = 'animate' }: RetroCoinSpriteProps) {
   if (mode === 'strip') {
+    const stripSlots = FRAME_PIXELS.length * COIN_SLOT_PX;
     return (
       <svg
         className="rr-loader__coin-svg rr-loader__coin-svg--strip"
-        viewBox={`0 0 ${STRIP_W} ${FRAME_PX}`}
-        width={STRIP_W * SCALE}
-        height={DISPLAY_PX}
+        viewBox={`0 0 ${stripSlots} ${COIN_ART_PX}`}
+        width={COIN_STRIP_PX}
+        height={COIN_FRAME_PX}
         shapeRendering="crispEdges"
         aria-hidden
       >
-        {FRAMES.flatMap((frame, i) => frameRects(frame, i * FRAME_PX))}
+        {FRAME_PIXELS.flatMap((frame, i) => frameRects(frame, i * COIN_SLOT_PX))}
       </svg>
     );
   }
 
   return (
     <span className="rr-loader__sprite" aria-hidden>
-      {FRAMES.map((frame, index) => (
-        <SingleFrameSvg
-          key={index}
-          frame={frame}
-          className={`rr-loader__coin-frame rr-loader__coin-frame--${index}`}
-        />
-      ))}
+      <svg
+        className="rr-loader__coin-stage"
+        viewBox={`0 0 ${COIN_ART_PX} ${COIN_ART_PX}`}
+        width={COIN_FRAME_PX}
+        height={COIN_FRAME_PX}
+        shapeRendering="crispEdges"
+      >
+        {FRAME_PIXELS.map((frame, index) => (
+          <g key={index} className={`rr-loader__coin-frame rr-loader__coin-frame--${index}`}>
+            {frameRects(frame)}
+          </g>
+        ))}
+      </svg>
     </span>
   );
 }

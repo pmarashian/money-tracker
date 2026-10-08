@@ -988,12 +988,12 @@ ion-modal.rr-modal .modal-wrapper {
   width: 100%;
   max-width: 100%;
   font-family: "Press Start 2P", monospace;
-  font-size: var(--fs-l);
-  line-height: var(--lh-l);
+  font-size: var(--fs-m);
+  line-height: var(--lh-m);
   color: var(--c-gold);
-  letter-spacing: 1px;
+  letter-spacing: 0;
   text-transform: uppercase;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
 }
 
 .rr-loader__cursor {
@@ -1045,21 +1045,14 @@ ion-modal.rr-modal .modal-wrapper {
   }
 }
 
-.rr-loader__sprite {
-  position: relative;
+.rr-loader__coin-stage {
   display: block;
-  flex: 0 0 auto;
-  width: 64px;
-  height: 64px;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
 }
 
 .rr-loader__coin-frame {
-  position: absolute;
-  inset: 0;
-  display: block;
   opacity: 0;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
   animation: rr-loader-coin-frame 0.8s steps(1, end) infinite;
 }
 
@@ -1079,14 +1072,11 @@ ion-modal.rr-modal .modal-wrapper {
   animation-delay: -0.6s;
 }
 
-.rr-loader__coin-svg {
+.rr-loader__coin-svg--strip {
   display: block;
+  margin: 0 auto;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
-}
-
-.rr-loader__coin-svg--strip {
-  margin: 0 auto;
 }
 
 @keyframes rr-loader-coin-frame {
