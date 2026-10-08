@@ -1,301 +1,174 @@
 #!/usr/bin/env python3
-"""Set TestFlight What to Test from merged PR titles (fallback: commit subjects)."""
+"""Set en-US TestFlight "What to Test" (whatsNew) for the uploaded build."""
+
 from __future__ import annotations
 
 import base64
 import json
 import os
-import subprocess
 import sys
 import time
-from typing import Any
+import urllib.error
+import urllib.parse
+import urllib.request
+from pathlib import Path
 
 import jwt
-import requests
 
-API_BASE = "https://api.appstoreconnect.apple.com/v1"
-MAX_WHATS_NEW = 4000
-WORKFLOW_FILE = "ios-testflight.yml"
-
-
-def env(name: str, default: str = "") -> str:
-    return os.environ.get(name, default).strip()
+API = "https://api.appstoreconnect.apple.com"
+LOCALE = "en-US"
+ROOT = Path(__file__).resolve().parents[2]
+NOTES_PATH = ROOT / "WHAT_TO_TEST.txt"
 
 
-def require(name: str) -> str:
-    value = env(name)
+def env(name: str) -> str:
+    value = os.environ.get(name, "")
     if not value:
-        print(f"Missing env {name}", file=sys.stderr)
+        print(f"Missing {name}.", file=sys.stderr)
         sys.exit(1)
     return value
 
 
-def make_token(key_id: str, issuer_id: str, key_bytes: bytes) -> str:
+def load_private_key() -> str:
+    raw = base64.b64decode("".join(env("APP_STORE_CONNECT_API_KEY_P8_BASE64").split()))
+    text = raw.decode("utf-8")
+    if "PRIVATE KEY" not in text:
+        print("p8 did not decode to a PEM private key.", file=sys.stderr)
+        sys.exit(1)
+    return text
+
+
+PRIVATE_KEY = load_private_key()
+KEY_ID = env("APP_STORE_CONNECT_API_KEY_ID")
+ISSUER_ID = env("APP_STORE_CONNECT_ISSUER_ID")
+BUILD_NUMBER = env("BUILD_NUMBER")
+BUNDLE_ID = env("IOS_BUNDLE_ID")
+
+
+def token() -> str:
     now = int(time.time())
-    return jwt.encode(
-        {"iss": issuer_id, "exp": now + 1200, "aud": "appstoreconnect-v1"},
-        key_bytes,
+    encoded = jwt.encode(
+        {"iss": ISSUER_ID, "iat": now, "exp": now + 15 * 60, "aud": "appstoreconnect-v1"},
+        PRIVATE_KEY,
         algorithm="ES256",
-        headers={"kid": key_id, "typ": "JWT"},
+        headers={"kid": KEY_ID, "typ": "JWT"},
     )
+    return encoded.decode("utf-8") if isinstance(encoded, bytes) else encoded
 
 
-def asc_request(
-    session: requests.Session,
-    method: str,
-    path: str,
-    *,
-    params: dict | None = None,
-    json_body: dict | None = None,
-) -> requests.Response:
-    url = f"{API_BASE}{path}"
-    resp = session.request(method, url, params=params, json=json_body, timeout=60)
-    return resp
-
-
-def asc_json(session: requests.Session, method: str, path: str, **kwargs: Any) -> dict:
-    resp = asc_request(session, method, path, **kwargs)
-    if resp.status_code >= 400:
-        print(resp.text, file=sys.stderr)
-        resp.raise_for_status()
-    if not resp.text:
-        return {}
-    return resp.json()
-
-
-def find_app_id(session: requests.Session, bundle_id: str) -> str:
-    data = asc_json(
-        session,
-        "GET",
-        "/apps",
-        params={"filter[bundleId]": bundle_id, "limit": "1"},
-    )
-    apps = data.get("data") or []
-    if not apps:
-        raise RuntimeError(f"No app for bundle id {bundle_id}")
-    return apps[0]["id"]
-
-
-def find_build_id(
-    session: requests.Session, app_id: str, version: str, build_number: str
-) -> str:
-    data = asc_json(
-        session,
-        "GET",
-        "/builds",
-        params={
-            "filter[app]": app_id,
-            "filter[version]": version,
-            "filter[buildNumber]": build_number,
-            "limit": "1",
-        },
-    )
-    builds = data.get("data") or []
-    if not builds:
-        raise RuntimeError("Build not found for whats-new update")
-    return builds[0]["id"]
-
-
-def gh_api(path: str) -> Any:
-    token = require("GITHUB_TOKEN")
-    repo = require("GITHUB_REPOSITORY")
-    url = f"https://api.github.com/repos/{repo}{path}"
-    resp = requests.get(
-        url,
+def api(method: str, path: str, body: dict | None = None) -> tuple[int, dict | None]:
+    data = None if body is None else json.dumps(body).encode("utf-8")
+    req = urllib.request.Request(
+        API + path,
+        data=data,
+        method=method,
         headers={
-            "Authorization": f"Bearer {token}",
-            "Accept": "application/vnd.github+json",
-            "X-GitHub-Api-Version": "2022-11-28",
+            "Authorization": "Bearer " + token(),
+            "Content-Type": "application/json",
+            "Accept": "application/json",
         },
-        timeout=60,
     )
-    if resp.status_code >= 400:
-        print(resp.text, file=sys.stderr)
-        resp.raise_for_status()
-    return resp.json()
-
-
-def last_successful_run_sha() -> str | None:
-    repo = require("GITHUB_REPOSITORY")
     try:
-        out = subprocess.check_output(
-            [
-                "gh",
-                "run",
-                "list",
-                "--repo",
-                repo,
-                "--workflow",
-                WORKFLOW_FILE,
-                "--status",
-                "success",
-                "--json",
-                "headSha,createdAt",
-                "--limit",
-                "2",
-            ],
-            text=True,
-        )
-        runs = json.loads(out)
-        if len(runs) < 2:
-            return None
-        return runs[1]["headSha"]
-    except (subprocess.CalledProcessError, json.JSONDecodeError, KeyError):
-        return None
-
-
-def commit_subjects_between(base: str, head: str) -> list[str]:
-    compare = gh_api(f"/compare/{base}...{head}")
-    subjects: list[str] = []
-    for item in compare.get("commits") or []:
-        subject = (item.get("commit") or {}).get("message", "").split("\n")[0].strip()
-        if subject:
-            subjects.append(subject)
-    return subjects
-
-
-def pr_titles_for_commits(commits: list[dict]) -> list[str]:
-    titles: list[str] = []
-    seen: set[str] = set()
-    for item in commits:
-        sha = item.get("sha")
-        if not sha:
-            continue
+        with urllib.request.urlopen(req, timeout=60) as res:
+            raw = res.read().decode("utf-8")
+            return res.status, json.loads(raw) if raw else None
+    except urllib.error.HTTPError as err:
+        raw = err.read().decode("utf-8", errors="replace")
         try:
-            pulls = gh_api(f"/commits/{sha}/pulls")
-        except requests.HTTPError:
-            continue
-        for pr in pulls:
-            title = (pr.get("title") or "").strip()
-            if title and title not in seen:
-                seen.add(title)
-                titles.append(title)
-    return titles
+            return err.code, json.loads(raw) if raw else None
+        except json.JSONDecodeError:
+            return err.code, None
 
 
-def collect_whats_new() -> str:
-    head = require("GITHUB_SHA")
-    since_sha = last_successful_run_sha()
-    base = since_sha or env("GITHUB_EVENT_BEFORE") or head
-
-    lines: list[str] = []
-    try:
-        compare = gh_api(f"/compare/{base}...{head}")
-        commits = compare.get("commits") or []
-        lines = pr_titles_for_commits(commits)
-        if not lines:
-            lines = commit_subjects_between(base, head)
-    except requests.HTTPError:
-        before = env("GITHUB_EVENT_BEFORE")
-        if before:
-            try:
-                lines = commit_subjects_between(before, head)
-            except requests.HTTPError:
-                lines = []
-
-    if not lines:
-        lines = ["Money Tracker build"]
-
-    text = "\n".join(dict.fromkeys(lines))
-    return text[:MAX_WHATS_NEW]
+def find_app_id() -> str:
+    query = "filter[bundleId]=" + urllib.parse.quote(BUNDLE_ID, safe="") + "&limit=1"
+    status, payload = api("GET", "/v1/apps?" + query)
+    if status != 200 or not payload:
+        print(f"App lookup failed (HTTP {status}).", file=sys.stderr)
+        sys.exit(1)
+    apps = payload.get("data") or []
+    if not apps:
+        print(f"No app for bundle id {BUNDLE_ID}.", file=sys.stderr)
+        sys.exit(1)
+    return str(apps[0]["id"])
 
 
-def patch_beta_localization(session: requests.Session, build_id: str, whats_new: str) -> None:
-    data = asc_json(
-        session,
-        "GET",
-        "/betaBuildLocalizations",
-        params={"filter[build]": build_id, "filter[locale]": "en-US", "limit": "1"},
+def find_build_id(app_id: str) -> str:
+    path = (
+        "/v1/builds?filter[app]="
+        + urllib.parse.quote(app_id, safe="")
+        + "&filter[version]="
+        + urllib.parse.quote(BUILD_NUMBER, safe="")
+        + "&limit=1"
     )
-    items = data.get("data") or []
-    if not items:
-        created = asc_json(
-            session,
-            "POST",
-            "/betaBuildLocalizations",
-            json_body={
-                "data": {
-                    "type": "betaBuildLocalizations",
-                    "attributes": {"locale": "en-US", "whatsNew": whats_new},
-                    "relationships": {
-                        "build": {"data": {"type": "builds", "id": build_id}}
-                    },
-                }
-            },
+    status, payload = api("GET", path)
+    if status != 200 or not payload:
+        print(f"Build lookup failed (HTTP {status}).", file=sys.stderr)
+        sys.exit(1)
+    builds = payload.get("data") or []
+    if not builds:
+        print(f"Build {BUILD_NUMBER} not found yet.", file=sys.stderr)
+        sys.exit(1)
+    return str(builds[0]["id"])
+
+
+def load_whats_new() -> str:
+    if not NOTES_PATH.is_file():
+        print(f"Missing {NOTES_PATH}.", file=sys.stderr)
+        sys.exit(1)
+    text = NOTES_PATH.read_text(encoding="utf-8")
+    if text != text.strip("\n") or not text.strip():
+        print("WHAT_TO_TEST.txt must be non-empty with no leading/trailing blank lines.", file=sys.stderr)
+        sys.exit(1)
+    return text
+
+
+def upsert_localization(build_id: str, whats_new: str) -> None:
+    status, payload = api("GET", f"/v1/builds/{urllib.parse.quote(build_id, safe='')}/betaBuildLocalizations")
+    existing_id: str | None = None
+    if status == 200 and payload:
+        for row in payload.get("data") or []:
+            attrs = row.get("attributes") or {}
+            if attrs.get("locale") == LOCALE:
+                existing_id = str(row["id"])
+                break
+
+    if existing_id:
+        status, _ = api(
+            "PATCH",
+            f"/v1/betaBuildLocalizations/{urllib.parse.quote(existing_id, safe='')}",
+            {"data": {"type": "betaBuildLocalizations", "id": existing_id, "attributes": {"whatsNew": whats_new}}},
         )
-        loc_id = created["data"]["id"]
-        print(f"Created beta localization {loc_id}")
+        if status not in (200, 201):
+            print(f"PATCH betaBuildLocalizations failed (HTTP {status}).", file=sys.stderr)
+            sys.exit(1)
+        print(f"Updated {LOCALE} whatsNew for build {BUILD_NUMBER}.")
         return
 
-    loc_id = items[0]["id"]
-    asc_json(
-        session,
-        "PATCH",
-        f"/betaBuildLocalizations/{loc_id}",
-        json_body={"data": {"type": "betaBuildLocalizations", "id": loc_id, "attributes": {"whatsNew": whats_new}}},
-    )
-    print(f"Updated whatsNew on {loc_id}")
-
-
-def ensure_internal_group(session: requests.Session, app_id: str) -> None:
-    data = asc_json(
-        session,
-        "GET",
-        "/betaGroups",
-        params={"filter[app]": app_id, "limit": "200"},
-    )
-    groups = data.get("data") or []
-    for group in groups:
-        name = (group.get("attributes") or {}).get("name", "")
-        if name.lower() == "internal":
-            print("Internal beta group already exists")
-            return
-
-    resp = asc_request(
-        session,
+    status, _ = api(
         "POST",
-        "/betaGroups",
-        json_body={
+        "/v1/betaBuildLocalizations",
+        {
             "data": {
-                "type": "betaGroups",
-                "attributes": {"name": "Internal", "hasAccessToAllBuilds": True},
-                "relationships": {"app": {"data": {"type": "apps", "id": app_id}}},
+                "type": "betaBuildLocalizations",
+                "attributes": {"locale": LOCALE, "whatsNew": whats_new},
+                "relationships": {"build": {"data": {"type": "builds", "id": build_id}}},
             }
         },
     )
-    if resp.status_code == 403:
-        print(
-            "Could not create Internal beta group (403 — App Manager API key cannot manage groups). Skipping.",
-            file=sys.stderr,
-        )
-        return
-    if resp.status_code >= 400:
-        print(resp.text, file=sys.stderr)
-        resp.raise_for_status()
-    print("Created Internal beta group with hasAccessToAllBuilds")
+    if status not in (200, 201):
+        print(f"POST betaBuildLocalizations failed (HTTP {status}).", file=sys.stderr)
+        sys.exit(1)
+    print(f"Created {LOCALE} whatsNew for build {BUILD_NUMBER}.")
 
 
-def main() -> None:
-    key_id = require("APP_STORE_CONNECT_API_KEY_ID")
-    issuer_id = require("APP_STORE_CONNECT_ISSUER_ID")
-    key_b64 = require("APP_STORE_CONNECT_API_KEY_P8_BASE64")
-    bundle_id = require("IOS_BUNDLE_ID")
-    version = require("MARKETING_VERSION")
-    build_number = require("BUILD_NUMBER")
-
-    key_bytes = base64.b64decode(key_b64)
-    session = requests.Session()
-    session.headers["Authorization"] = f"Bearer {make_token(key_id, issuer_id, key_bytes)}"
-    session.headers["Content-Type"] = "application/json"
-
-    whats_new = collect_whats_new()
-    print(f"whatsNew ({len(whats_new)} chars):\n{whats_new}")
-
-    app_id = find_app_id(session, bundle_id)
-    build_id = find_build_id(session, app_id, version, build_number)
-    patch_beta_localization(session, build_id, whats_new)
-    ensure_internal_group(session, app_id)
+def main() -> int:
+    whats_new = load_whats_new()
+    app_id = find_app_id()
+    build_id = find_build_id(app_id)
+    upsert_localization(build_id, whats_new)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

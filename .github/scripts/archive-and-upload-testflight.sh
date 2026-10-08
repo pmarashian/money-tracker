@@ -1,7 +1,7 @@
-#!/usr/bin/env bash
-# Archive Capacitor iOS app and upload to TestFlight (manual signing + ASC API key).
+#!/bin/bash
+# Archive a signed iOS build and upload it to TestFlight (Money Tracker).
 set -euo pipefail
-
+umask 077
 : "${APP_STORE_CONNECT_API_KEY_ID:?}"
 : "${APP_STORE_CONNECT_ISSUER_ID:?}"
 : "${APP_STORE_CONNECT_API_KEY_P8_BASE64:?}"
@@ -9,116 +9,175 @@ set -euo pipefail
 : "${IOS_DISTRIBUTION_CERTIFICATE_PASSWORD:?}"
 : "${IOS_PROVISIONING_PROFILE_BASE64:?}"
 : "${IOS_BUNDLE_ID:?}"
-: "${DEVELOPMENT_TEAM:?}"
-: "${IOS_PROJECT:?}"
-: "${IOS_SCHEME:?}"
-: "${BUILD_NUMBER:?}"
-: "${MARKETING_VERSION:?}"
 
 IOS_REQUIRES_PUSH="${IOS_REQUIRES_PUSH:-false}"
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-IOS_PROJECT_PATH="${REPO_ROOT}/${IOS_PROJECT}"
-PACKAGES_DIR="${RUNNER_TEMP:-/tmp}/SourcePackages"
-ARCHIVE_PATH="${RUNNER_TEMP:-/tmp}/MoneyTracker.xcarchive"
-EXPORT_DIR="${RUNNER_TEMP:-/tmp}/export"
-KEYCHAIN_PATH="${RUNNER_TEMP:-/tmp}/app-signing.keychain-db"
-API_KEY_PATH="${RUNNER_TEMP:-/tmp}/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
-PROFILE_PATH="${RUNNER_TEMP:-/tmp}/profile.mobileprovision"
-P12_PATH="${RUNNER_TEMP:-/tmp}/distribution.p12"
+BUNDLE_ID="$IOS_BUNDLE_ID"
+TEAM_ID="DEW8E9PGR8"
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+WORK="${RUNNER_TEMP}/testflight"
+KEYCHAIN_PATH="${WORK}/signing.keychain-db"
+KEYCHAIN_PASSWORD="$(openssl rand -base64 32)"
+: "${BUILD_NUMBER:?BUILD_NUMBER is required (GitHub Actions run number)}"
+mkdir -p "$WORK"
+P8_PATH="${WORK}/AuthKey.p8"
+P12_PATH="${WORK}/distribution.p12"
+PROFILE_PATH="${WORK}/profile.mobileprovision"
+EXPORT_PLIST="${WORK}/ExportOptions.plist"
+ARCHIVE_PATH="${WORK}/MoneyTracker.xcarchive"
+EXPORT_DIR="${WORK}/export"
 
-mkdir -p "$PACKAGES_DIR" "$EXPORT_DIR"
-mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+cleanup() {
+  if [ -n "${APP_STORE_CONNECT_API_KEY_ID:-}" ]; then
+    rm -f "${HOME}/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
+  fi
+  if [ -f "$KEYCHAIN_PATH" ]; then
+    security delete-keychain "$KEYCHAIN_PATH" >/dev/null 2>&1 || true
+  fi
+  rm -rf "$WORK"
+}
+trap cleanup EXIT
 
-echo "$APP_STORE_CONNECT_API_KEY_P8_BASE64" | base64 --decode > "$API_KEY_PATH"
-echo "$IOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$PROFILE_PATH"
-echo "$IOS_DISTRIBUTION_CERTIFICATE_P12_BASE64" | base64 --decode > "$P12_PATH"
+decode_b64() {
+  local dest="$1"
+  local value="$2"
+  printf '%s' "$value" | tr -d '[:space:]' | base64 -D > "$dest"
+}
 
-PROFILE_PLIST="$(security cms -D -i "$PROFILE_PATH")"
-PROFILE_UUID="$(/usr/libexec/PlistBuddy -c 'Print UUID' /dev/stdin <<<"$PROFILE_PLIST")"
-PROFILE_NAME="$(/usr/libexec/PlistBuddy -c 'Print Name' /dev/stdin <<<"$PROFILE_PLIST")"
-cp "$PROFILE_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/${PROFILE_UUID}.mobileprovision"
+decode_b64 "$P8_PATH" "$APP_STORE_CONNECT_API_KEY_P8_BASE64"
+decode_b64 "$P12_PATH" "$IOS_DISTRIBUTION_CERTIFICATE_P12_BASE64"
+decode_b64 "$PROFILE_PATH" "$IOS_PROVISIONING_PROFILE_BASE64"
 
-security create-keychain -p "" "$KEYCHAIN_PATH"
+if ! grep -q "PRIVATE KEY" "$P8_PATH"; then
+  echo "p8 did not decode to a PEM private key."
+  exit 1
+fi
+
+PROFILE_PLIST="${WORK}/profile.plist"
+security cms -D -i "$PROFILE_PATH" -o "$PROFILE_PLIST"
+PROFILE_NAME="$(plutil -extract Name raw "$PROFILE_PLIST")"
+PROFILE_UUID="$(plutil -extract UUID raw "$PROFILE_PLIST")"
+APP_IDENTIFIER="$(plutil -extract Entitlements.application-identifier raw "$PROFILE_PLIST")"
+GET_TASK_ALLOW="$(plutil -extract Entitlements.get-task-allow raw "$PROFILE_PLIST")"
+
+if [ "$APP_IDENTIFIER" != "${TEAM_ID}.${BUNDLE_ID}" ]; then
+  echo "Profile is for ${APP_IDENTIFIER}, expected ${TEAM_ID}.${BUNDLE_ID}."
+  exit 1
+fi
+if [ "$GET_TASK_ALLOW" != "false" ]; then
+  echo "Profile looks like a development profile."
+  exit 1
+fi
+
+if [ "$IOS_REQUIRES_PUSH" = "true" ]; then
+  PROFILE_APS="$(plutil -extract Entitlements.aps-environment raw "$PROFILE_PLIST" 2>/dev/null || true)"
+  if [ "$PROFILE_APS" != "production" ]; then
+    echo "Profile aps-environment is '${PROFILE_APS:-missing}', expected production."
+    exit 1
+  fi
+fi
+
+install -d "${HOME}/.appstoreconnect/private_keys"
+install -m 600 "$P8_PATH" "${HOME}/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
+install -d "${HOME}/Library/MobileDevice/Provisioning Profiles"
+install -m 600 "$PROFILE_PATH" "${HOME}/Library/MobileDevice/Provisioning Profiles/${PROFILE_UUID}.mobileprovision"
+
+curl -fsSL -o "${WORK}/AppleWWDRCAG3.cer" "https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer"
+curl -fsSL -o "${WORK}/AppleWWDRCAG4.cer" "https://www.apple.com/certificateauthority/AppleWWDRCAG4.cer"
+
+security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-security unlock-keychain -p "" "$KEYCHAIN_PATH"
-security import "$P12_PATH" -k "$KEYCHAIN_PATH" -P "$IOS_DISTRIBUTION_CERTIFICATE_PASSWORD" \
-  -T /usr/bin/codesign -T /usr/bin/security
-security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" "$KEYCHAIN_PATH"
-EXISTING_KEYCHAINS="$(security list-keychains -d user | tr -d '"')"
-# shellcheck disable=SC2086
-security list-keychains -d user -s "$KEYCHAIN_PATH" $EXISTING_KEYCHAINS
+security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+security import "${WORK}/AppleWWDRCAG3.cer" -k "$KEYCHAIN_PATH" -t cert -T /usr/bin/codesign
+security import "${WORK}/AppleWWDRCAG4.cer" -k "$KEYCHAIN_PATH" -t cert -T /usr/bin/codesign
 
-echo "Resolving Swift packages in ${PACKAGES_DIR}"
-xcodebuild -resolvePackageDependencies \
-  -project "$IOS_PROJECT_PATH" \
-  -scheme "$IOS_SCHEME" \
-  -clonedSourcePackagesDirPath "$PACKAGES_DIR" \
-  -disableAutomaticPackageResolution
+if ! security import "$P12_PATH" -k "$KEYCHAIN_PATH" -P "$IOS_DISTRIBUTION_CERTIFICATE_PASSWORD" -f pkcs12 -T /usr/bin/codesign -T /usr/bin/security; then
+  echo "macOS could not import the distribution .p12."
+  exit 1
+fi
 
-SIGN_APP_ONLY=(
-  "CODE_SIGN_STYLE=Manual"
-  "CODE_SIGN_IDENTITY=Apple Distribution"
-  "DEVELOPMENT_TEAM=${DEVELOPMENT_TEAM}"
-  "PROVISIONING_PROFILE_SPECIFIER=${PROFILE_NAME}"
-  "CURRENT_PROJECT_VERSION=${BUILD_NUMBER}"
-  "MARKETING_VERSION=${MARKETING_VERSION}"
-  "CODE_SIGNING_ALLOWED=NO"
-  "CODE_SIGNING_ALLOWED[sdk=iphoneos*][arch=*][target=App]=YES"
-  "CODE_SIGN_STYLE[sdk=iphoneos*][arch=*][target=App]=Manual"
-  "CODE_SIGN_IDENTITY[sdk=iphoneos*][arch=*][target=App]=Apple Distribution"
-  "PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*][arch=*][target=App]=${PROFILE_NAME}"
-  "DEVELOPMENT_TEAM[sdk=iphoneos*][arch=*][target=App]=${DEVELOPMENT_TEAM}"
+security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH" >/dev/null
+default_keychain="$(security default-keychain | tr -d '"' | xargs)"
+security list-keychains -d user -s "$KEYCHAIN_PATH" "$default_keychain"
+
+IDENTITY="$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | sed -n 's/.*"\(Apple Distribution:.*\)"/\1/p' | head -1)"
+if [ -z "$IDENTITY" ]; then
+  IDENTITY="$(security find-identity -v -p codesigning "$KEYCHAIN_PATH" | sed -n 's/.*"\(iPhone Distribution:.*\)"/\1/p' | head -1)"
+fi
+if [ -z "$IDENTITY" ]; then
+  echo "No Apple Distribution identity in the .p12."
+  exit 1
+fi
+
+cat > "$EXPORT_PLIST" <<'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict/></plist>
+EOF
+/usr/libexec/PlistBuddy -c "Add :method string app-store-connect" "$EXPORT_PLIST"
+/usr/libexec/PlistBuddy -c "Add :teamID string ${TEAM_ID}" "$EXPORT_PLIST"
+/usr/libexec/PlistBuddy -c "Add :signingStyle string manual" "$EXPORT_PLIST"
+/usr/libexec/PlistBuddy -c "Add :signingCertificate string Apple Distribution" "$EXPORT_PLIST"
+/usr/libexec/PlistBuddy -c "Add :uploadSymbols bool true" "$EXPORT_PLIST"
+/usr/libexec/PlistBuddy -c "Add :manageAppVersionAndBuildNumber bool false" "$EXPORT_PLIST"
+/usr/libexec/PlistBuddy -c "Add :provisioningProfiles dict" "$EXPORT_PLIST"
+/usr/libexec/PlistBuddy -c "Add :provisioningProfiles:${BUNDLE_ID} string ${PROFILE_NAME}" "$EXPORT_PLIST"
+
+ARCHIVE_ARGS=(
+  -project "$ROOT/frontend/ios/App/App.xcodeproj"
+  -scheme App
+  -configuration Release
+  -destination "generic/platform=iOS"
+  -archivePath "$ARCHIVE_PATH"
+  -derivedDataPath "${WORK}/DerivedData"
+  CODE_SIGN_STYLE=Manual
+  DEVELOPMENT_TEAM="$TEAM_ID"
+  CODE_SIGN_IDENTITY="$IDENTITY"
+  PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME"
+  CURRENT_PROJECT_VERSION="$BUILD_NUMBER"
+  OTHER_CODE_SIGN_FLAGS="--keychain ${KEYCHAIN_PATH}"
 )
 
-echo "Archiving ${IOS_SCHEME} (build ${BUILD_NUMBER}, version ${MARKETING_VERSION})"
-xcodebuild archive \
-  -project "$IOS_PROJECT_PATH" \
-  -scheme "$IOS_SCHEME" \
-  -configuration Release \
-  -destination "generic/platform=iOS" \
-  -archivePath "$ARCHIVE_PATH" \
-  -clonedSourcePackagesDirPath "$PACKAGES_DIR" \
-  -disableAutomaticPackageResolution \
-  -skipPackagePluginValidation \
-  OTHER_CODE_SIGN_FLAGS="--keychain ${KEYCHAIN_PATH}" \
-  "${SIGN_APP_ONLY[@]}"
+if [ "$IOS_REQUIRES_PUSH" = "true" ]; then
+  PROD_ENTITLEMENTS="${WORK}/App-production.entitlements"
+  cp "$ROOT/frontend/ios/App/App/App.entitlements" "$PROD_ENTITLEMENTS"
+  plutil -replace aps-environment -string production "$PROD_ENTITLEMENTS"
+  ARCHIVE_ARGS+=(CODE_SIGN_ENTITLEMENTS="$PROD_ENTITLEMENTS")
+fi
 
-EXPORT_PLIST="${EXPORT_DIR}/ExportOptions.plist"
-EXPORT_PLIST="$EXPORT_PLIST" \
-  IOS_BUNDLE_ID="$IOS_BUNDLE_ID" \
-  DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" \
-  PROFILE_NAME="$PROFILE_NAME" \
-  IOS_REQUIRES_PUSH="$IOS_REQUIRES_PUSH" \
-  /usr/bin/python3 - <<'PY'
-import os
-import plistlib
+cd "$ROOT"
+xcodebuild "${ARCHIVE_ARGS[@]}" archive
+xcodebuild -exportArchive -archivePath "$ARCHIVE_PATH" -exportPath "$EXPORT_DIR" -exportOptionsPlist "$EXPORT_PLIST"
 
-plist = {
-    "method": "app-store-connect",
-    "destination": "upload",
-    "signingStyle": "manual",
-    "teamID": os.environ["DEVELOPMENT_TEAM"],
-    "uploadSymbols": True,
-    "signingCertificate": "Apple Distribution",
-    "provisioningProfiles": {
-        os.environ["IOS_BUNDLE_ID"]: os.environ["PROFILE_NAME"]
-    },
-}
-if os.environ.get("IOS_REQUIRES_PUSH", "false").lower() != "true":
-    plist["manageAppVersionAndBuildNumber"] = False
-with open(os.environ["EXPORT_PLIST"], "wb") as fh:
-    plistlib.dump(plist, fh)
-PY
+IPA="$(find "$EXPORT_DIR" -name '*.ipa' -print -quit)"
+if [ -z "$IPA" ]; then
+  echo "Export did not produce an .ipa."
+  exit 1
+fi
 
-echo "Exporting and uploading to App Store Connect"
-xcodebuild -exportArchive \
-  -archivePath "$ARCHIVE_PATH" \
-  -exportPath "$EXPORT_DIR" \
-  -exportOptionsPlist "$EXPORT_PLIST" \
-  -authenticationKeyPath "$API_KEY_PATH" \
-  -authenticationKeyID "$APP_STORE_CONNECT_API_KEY_ID" \
-  -authenticationKeyIssuerID "$APP_STORE_CONNECT_ISSUER_ID" \
-  OTHER_CODE_SIGN_FLAGS="--keychain ${KEYCHAIN_PATH}"
+if [ "$IOS_REQUIRES_PUSH" = "true" ]; then
+  UNZIP_DIR="${WORK}/ipa-inspect"
+  mkdir -p "$UNZIP_DIR"
+  unzip -q "$IPA" -d "$UNZIP_DIR"
+  APP_PLIST="$(find "$UNZIP_DIR" -path '*/Payload/*.app/embedded.mobileprovision' -print -quit)"
+  if [ -z "$APP_PLIST" ]; then
+    echo "Could not find embedded.mobileprovision in exported IPA."
+    exit 1
+  fi
+  EMBED_PLIST="${WORK}/embedded-profile.plist"
+  security cms -D -i "$APP_PLIST" -o "$EMBED_PLIST"
+  EMBED_APS="$(plutil -extract Entitlements.aps-environment raw "$EMBED_PLIST" 2>/dev/null || true)"
+  if [ "$EMBED_APS" != "production" ]; then
+    echo "Signed app aps-environment is '${EMBED_APS:-missing}', expected production."
+    exit 1
+  fi
+fi
 
-echo "Upload complete for ${MARKETING_VERSION} (${BUILD_NUMBER})"
+xcrun altool --upload-app --type ios --file "$IPA" --apiKey "$APP_STORE_CONNECT_API_KEY_ID" --apiIssuer "$APP_STORE_CONNECT_ISSUER_ID"
+
+if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+  {
+    echo "### TestFlight upload accepted"
+    echo "Build number \`${BUILD_NUMBER}\` uploaded for \`${BUNDLE_ID}\`."
+  } >> "$GITHUB_STEP_SUMMARY"
+fi

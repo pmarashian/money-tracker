@@ -1,24 +1,33 @@
 name: iOS TestFlight
 
+# Signed archive + TestFlight upload for Money Tracker (Capacitor iOS).
+# Tooling: xcodebuild + xcrun altool (no fastlane).
+
 on:
   push:
-    branches: [main]
-  pull_request:
+    branches:
+      - main
   workflow_dispatch:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: read
 
 concurrency:
   group: ios-testflight
   cancel-in-progress: false
 
 jobs:
-  secrets-gate:
-    name: Secret gate
+  secrets:
+    name: Check signing secrets
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
-      secrets_ok: ${{ steps.check.outputs.secrets_ok }}
+      ready: ${{ steps.gate.outputs.ready }}
     steps:
       - name: Check required secrets
-        id: check
+        id: gate
         env:
           APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
@@ -29,136 +38,163 @@ jobs:
         run: |
           set -euo pipefail
           missing=()
-          for name in \
-            APP_STORE_CONNECT_API_KEY_ID \
-            APP_STORE_CONNECT_ISSUER_ID \
-            APP_STORE_CONNECT_API_KEY_P8_BASE64 \
-            IOS_DISTRIBUTION_CERTIFICATE_P12_BASE64 \
-            IOS_DISTRIBUTION_CERTIFICATE_PASSWORD \
-            MONEY_TRACKER_IOS_PROVISIONING_PROFILE_BASE64
-          do
-            if [ -z "${!name:-}" ]; then
-              missing+=("$name")
-            fi
-          done
+          [ -z "${APP_STORE_CONNECT_API_KEY_ID}" ] && missing+=("APP_STORE_CONNECT_API_KEY_ID")
+          [ -z "${APP_STORE_CONNECT_ISSUER_ID}" ] && missing+=("APP_STORE_CONNECT_ISSUER_ID")
+          [ -z "${APP_STORE_CONNECT_API_KEY_P8_BASE64}" ] && missing+=("APP_STORE_CONNECT_API_KEY_P8_BASE64")
+          [ -z "${IOS_DISTRIBUTION_CERTIFICATE_P12_BASE64}" ] && missing+=("IOS_DISTRIBUTION_CERTIFICATE_P12_BASE64")
+          [ -z "${IOS_DISTRIBUTION_CERTIFICATE_PASSWORD}" ] && missing+=("IOS_DISTRIBUTION_CERTIFICATE_PASSWORD")
+          [ -z "${MONEY_TRACKER_IOS_PROVISIONING_PROFILE_BASE64}" ] && missing+=("MONEY_TRACKER_IOS_PROVISIONING_PROFILE_BASE64")
           if [ "${#missing[@]}" -gt 0 ]; then
-            echo "TestFlight skipped — missing secrets:"
-            printf '  - %s\n' "${missing[@]}"
-            echo "secrets_ok=false" >> "$GITHUB_OUTPUT"
-            exit 0
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=TestFlight skipped::Missing GitHub Actions secrets: ${missing[*]}. See docs/ios-release.md."
+            {
+              echo "### TestFlight skipped"
+              echo "Signing secrets are not configured, so this workflow did not archive or upload."
+              echo ""
+              echo "Missing:"
+              for name in "${missing[@]}"; do
+                echo "- \`${name}\`"
+              done
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
           fi
-          echo "All TestFlight secrets present."
-          echo "secrets_ok=true" >> "$GITHUB_OUTPUT"
 
-  release:
-    name: Archive and upload
-    needs: secrets-gate
-    if: >-
-      needs.secrets-gate.outputs.secrets_ok == 'true' &&
-      github.event_name != 'pull_request'
+  ios-compile:
+    name: Unsigned iOS archive (compile check)
+    needs: secrets
+    if: needs.secrets.outputs.ready != 'true'
     runs-on: macos-latest
-    timeout-minutes: 60
-    outputs:
-      marketing_version: ${{ steps.meta.outputs.marketing_version }}
-      build_number: ${{ steps.meta.outputs.build_number }}
+    timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Node 22
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Show Xcode version
+        run: xcodebuild -version
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-
-      - name: Build web assets
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Build web app
+        working-directory: frontend
+        run: npm run build
+      - name: Confirm the live API URL is in the bundle
         working-directory: frontend
         run: |
-          set -euo pipefail
-          npm ci
-          npm run build
-          if ! grep -rq 'https://money-tracker-backend-wine.vercel.app' dist; then
-            echo "dist does not contain production API URL" >&2
+          if ! grep -q "https://money-tracker-backend-wine.vercel.app" dist/assets/*.js; then
+            echo "VITE_PROD_API_URL was not baked into the web bundle."
             exit 1
           fi
-
       - name: Capacitor sync iOS
         working-directory: frontend
         run: npx cap sync ios
-
-      - name: Resolve marketing version
-        id: meta
-        working-directory: frontend
+      - name: xcodebuild archive (unsigned)
         run: |
           set -euo pipefail
-          MV="$(node -p "require('./package.json').version")"
-          echo "marketing_version=${MV}" >> "$GITHUB_OUTPUT"
-          echo "build_number=${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+          ARCHIVE_PATH="${RUNNER_TEMP}/MoneyTracker-unsigned.xcarchive"
+          xcodebuild \
+            -project frontend/ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath "$ARCHIVE_PATH" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            archive
 
+  release:
+    name: Archive and upload
+    needs: secrets
+    if: needs.secrets.outputs.ready == 'true' && (github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main')
+    runs-on: macos-latest
+    timeout-minutes: 60
+    env:
+      IOS_BUNDLE_ID: com.phillipmarashian.moneytracker
+      IOS_REQUIRES_PUSH: "false"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Show Xcode version
+        run: xcodebuild -version
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Build web app
+        working-directory: frontend
+        run: npm run build
+      - name: Confirm the live API URL is in the bundle
+        working-directory: frontend
+        run: |
+          if ! grep -q "https://money-tracker-backend-wine.vercel.app" dist/assets/*.js; then
+            echo "VITE_PROD_API_URL was not baked into the web bundle."
+            exit 1
+          fi
+      - name: Capacitor sync iOS
+        working-directory: frontend
+        run: npx cap sync ios
       - name: Archive and upload to TestFlight
         env:
           APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           APP_STORE_CONNECT_API_KEY_P8_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8_BASE64 }}
+          IOS_BUNDLE_ID: com.phillipmarashian.moneytracker
           IOS_DISTRIBUTION_CERTIFICATE_P12_BASE64: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_P12_BASE64 }}
           IOS_DISTRIBUTION_CERTIFICATE_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_PASSWORD }}
           IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.MONEY_TRACKER_IOS_PROVISIONING_PROFILE_BASE64 }}
-          IOS_BUNDLE_ID: com.phillipmarashian.moneytracker
-          DEVELOPMENT_TEAM: DEW8E9PGR8
           IOS_REQUIRES_PUSH: "false"
-          IOS_PROJECT: frontend/ios/App/App.xcodeproj
-          IOS_SCHEME: App
           BUILD_NUMBER: ${{ github.run_number }}
-          MARKETING_VERSION: ${{ steps.meta.outputs.marketing_version }}
         run: bash .github/scripts/archive-and-upload-testflight.sh
 
-  whats-new:
-    name: TestFlight What to Test
-    needs: [secrets-gate, release]
-    if: >-
-      needs.secrets-gate.outputs.secrets_ok == 'true' &&
-      github.event_name != 'pull_request' &&
-      needs.release.result == 'success'
+  processing:
+    name: App Store Connect processing
+    needs: release
+    if: needs.release.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
-      - name: Install Python deps
-        run: pip install --quiet PyJWT cryptography requests
-
-      - name: Wait for App Store Connect processing
-        id: poll
+      - name: Install PyJWT
+        run: pip install --disable-pip-version-check "PyJWT==2.10.1" cryptography
+      - name: Poll processingState and ensure internal beta group
         env:
           APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           APP_STORE_CONNECT_API_KEY_P8_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8_BASE64 }}
+          BUILD_NUMBER: ${{ github.run_number }}
           IOS_BUNDLE_ID: com.phillipmarashian.moneytracker
-          MARKETING_VERSION: ${{ needs.release.outputs.marketing_version }}
-          BUILD_NUMBER: ${{ needs.release.outputs.build_number }}
-        run: |
-          set -euo pipefail
-          python3 .github/scripts/poll-testflight-processing.py
-
-      - name: Set What to Test and internal group
+        run: python3 .github/scripts/poll-testflight-processing.py
+      - name: Write WHAT_TO_TEST.txt
         env:
-          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
-          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
-          APP_STORE_CONNECT_API_KEY_P8_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8_BASE64 }}
-          IOS_BUNDLE_ID: com.phillipmarashian.moneytracker
-          MARKETING_VERSION: ${{ needs.release.outputs.marketing_version }}
-          BUILD_NUMBER: ${{ needs.release.outputs.build_number }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_SHA: ${{ github.sha }}
-          GITHUB_EVENT_NAME: ${{ github.event_name }}
           GITHUB_EVENT_BEFORE: ${{ github.event.before }}
-        run: |
-          set -euo pipefail
-          python3 .github/scripts/set-testflight-whats-new.py
+        run: python3 .github/scripts/write-what-to-test.py
+      - name: Set TestFlight What to Test (en-US)
+        continue-on-error: true
+        env:
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_P8_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8_BASE64 }}
+          BUILD_NUMBER: ${{ github.run_number }}
+          IOS_BUNDLE_ID: com.phillipmarashian.moneytracker
+        run: python3 .github/scripts/set-testflight-whats-new.py
