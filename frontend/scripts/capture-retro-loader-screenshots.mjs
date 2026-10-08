@@ -25,7 +25,7 @@ async function main() {
   const page = await context.newPage();
 
   await page.goto(`${BASE}/dev/retro-loader?screen=home`, { waitUntil: 'networkidle' });
-  await page.waitForSelector('.rr-loader__window', { timeout: 10000 });
+  await page.waitForSelector('.rr-loader__stack', { timeout: 10000 });
 
   for (let i = 0; i < 4; i += 1) {
     await pauseCoinAt(page, i);
@@ -39,7 +39,7 @@ async function main() {
   await page.screenshot({ path: path.join(OUT, 'retro-loader-home.png'), fullPage: false });
 
   await page.goto(`${BASE}/dev/retro-loader?screen=expenses`, { waitUntil: 'networkidle' });
-  await page.waitForSelector('.rr-loader__window', { timeout: 10000 });
+  await page.waitForSelector('.rr-loader__stack', { timeout: 10000 });
   await pauseCoinAt(page, 0);
   await page.screenshot({ path: path.join(OUT, 'retro-loader-expenses.png'), fullPage: false });
 

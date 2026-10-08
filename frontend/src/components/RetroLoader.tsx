@@ -24,7 +24,7 @@ export function RetroLoader({
 
   return (
     <div className={rootClass} role="status" aria-live="polite" aria-busy="true">
-      <div className="rr-win rr-win--dq rr-loader__window">
+      <div className="rr-loader__stack">
         <div className="rr-loader__sprite-slot">
           <RetroCoinSprite />
         </div>
