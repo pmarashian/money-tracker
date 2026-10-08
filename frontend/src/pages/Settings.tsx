@@ -4,7 +4,6 @@ import {
   IonPage,
   IonTitle,
   IonToolbar,
-  IonSpinner,
   IonToast,
 } from '@ionic/react';
 import { useState, useEffect } from 'react';
@@ -17,6 +16,8 @@ import { RrWin } from '../components/rr/RrWin';
 import { RrField } from '../components/rr/RrField';
 import { RrCmdButton } from '../components/rr/RrCmdButton';
 import type { BackgroundId } from '../lib/appBackgrounds';
+import { RetroLoaderPage } from '../components/RetroLoaderPage';
+import { useRetroPageLoading } from '../hooks/useRetroPageLoading';
 
 interface UserSettings {
   paycheckAmount: number;
@@ -111,14 +112,15 @@ const Settings: React.FC = () => {
     setPasswordChanging(false);
   };
 
-  if (loading) {
+  const { showLoader, blocking: loadingBlocking } = useRetroPageLoading(loading);
+
+  if (loadingBlocking) {
     return (
-      <IonPage className="rr-app">
-        <IonContent className="ion-padding ion-text-center">
-          <IonSpinner name="crescent" />
-          <p className="rr-lead">Loading settings...</p>
-        </IonContent>
-      </IonPage>
+      <RetroLoaderPage
+        title="Settings"
+        label="LOADING SETTINGS"
+        showLoader={showLoader}
+      />
     );
   }
 

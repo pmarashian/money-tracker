@@ -11,7 +11,6 @@ import {
   IonIcon,
   IonCard,
   IonCardContent,
-  IonSpinner,
   IonAlert,
   IonText,
   IonFooter,
@@ -19,6 +18,9 @@ import {
 import { send } from 'ionicons/icons';
 import { useAuth } from '../hooks/useAuth';
 import { apiPost } from '../lib/api';
+import { RetroLoader } from '../components/RetroLoader';
+import { RetroLoaderPage } from '../components/RetroLoaderPage';
+import { useRetroPageLoading } from '../hooks/useRetroPageLoading';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -92,14 +94,11 @@ const Chat: React.FC = () => {
     }
   };
 
-  if (authLoading) {
+  const { showLoader, blocking: authBlocking } = useRetroPageLoading(authLoading);
+
+  if (authBlocking) {
     return (
-      <IonPage>
-        <IonContent className="ion-padding ion-text-center">
-          <IonSpinner name="crescent" />
-          <p>Loading...</p>
-        </IonContent>
-      </IonPage>
+      <RetroLoaderPage title="Chat" label="LOADING" showLoader={showLoader} />
     );
   }
 
@@ -151,9 +150,8 @@ const Chat: React.FC = () => {
           {/* Loading indicator */}
           {isLoading && (
             <IonCard>
-              <IonCardContent className="ion-text-center">
-                <IonSpinner name="crescent" />
-                <p>AI is thinking...</p>
+              <IonCardContent>
+                <RetroLoader variant="inline" label="THINKING" />
               </IonCardContent>
             </IonCard>
           )}

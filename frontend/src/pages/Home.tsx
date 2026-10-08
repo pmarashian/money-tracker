@@ -5,13 +5,14 @@ import {
   IonPage,
   IonTitle,
   IonToolbar,
-  IonSpinner,
 } from '@ionic/react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { apiGet } from '../lib/api';
 import { parseDateOnlyAsLocal } from '../lib/dateUtils';
 import { RrWin } from '../components/rr/RrWin';
+import { RetroLoaderPage } from '../components/RetroLoaderPage';
+import { useRetroPageLoading } from '../hooks/useRetroPageLoading';
 
 const NY_TZ = 'America/New_York';
 
@@ -132,19 +133,16 @@ const Home: React.FC = () => {
   const statusLabel = (status: MoneySnapshot['status']) =>
     status === 'on_track' ? 'On track' : 'Needs top-off';
 
-  if (authLoading || loading) {
+  const pageLoading = authLoading || loading;
+  const { showLoader, blocking: loadingBlocking } = useRetroPageLoading(pageLoading);
+
+  if (loadingBlocking) {
     return (
-      <IonPage className="rr-app">
-        <IonHeader>
-          <IonToolbar>
-            <IonTitle>Money Tracker</IonTitle>
-          </IonToolbar>
-        </IonHeader>
-        <IonContent className="ion-padding ion-text-center">
-          <IonSpinner name="crescent" />
-          <p className="rr-lead">Loading your snapshot...</p>
-        </IonContent>
-      </IonPage>
+      <RetroLoaderPage
+        title="Money Tracker"
+        label="LOADING SNAPSHOT"
+        showLoader={showLoader}
+      />
     );
   }
 

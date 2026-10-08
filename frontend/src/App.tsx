@@ -26,15 +26,18 @@ import ResetPassword from "./pages/ResetPassword";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { AppBackgroundProvider, useAppBackground } from "./hooks/useAppBackground";
 import ProtectedRoute from "./components/ProtectedRoute";
-import LoadingSpinner from "./components/LoadingSpinner";
+import { RetroLoaderScreen } from "./components/RetroLoaderPage";
+import { useRetroPageLoading } from "./hooks/useRetroPageLoading";
 import logger from "./lib/logger";
+import DevRetroLoaderPreview from "./pages/DevRetroLoaderPreview";
 
 const InitialRoute: React.FC = () => {
   const { user, loading } = useAuth();
 
-  // Wait for auth check to complete before redirecting
-  if (loading) {
-    return <LoadingSpinner />;
+  const { showLoader, blocking } = useRetroPageLoading(loading);
+
+  if (blocking) {
+    return showLoader ? <RetroLoaderScreen label="LOADING" /> : null;
   }
 
   // Redirect based on authentication state
@@ -105,6 +108,12 @@ const TabBar: React.FC = () => {
 const AppContent: React.FC = () => {
   return (
     <Routes>
+      {import.meta.env.DEV ? (
+        <Route
+          path="/dev/retro-loader"
+          element={<DevRetroLoaderPreview />}
+        />
+      ) : null}
       <Route path="/login" element={<Login />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />

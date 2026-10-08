@@ -10,11 +10,12 @@ import {
   IonInput,
   IonButton,
   IonText,
-  IonLoading,
   IonAlert,
 } from '@ionic/react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiPost } from '../lib/api';
+import { RetroLoader } from '../components/RetroLoader';
+import { useRetroPageLoading } from '../hooks/useRetroPageLoading';
 
 const Register: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -24,6 +25,7 @@ const Register: React.FC = () => {
   const [error, setError] = useState('');
   const [showAlert, setShowAlert] = useState(false);
   const navigate = useNavigate();
+  const { showLoader, blocking: submitBlocking } = useRetroPageLoading(loading);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,7 +120,11 @@ const Register: React.FC = () => {
           </IonText>
         </div>
 
-        <IonLoading isOpen={loading} message="Creating account..." />
+        {submitBlocking && showLoader ? (
+          <div className="rr-loader-screen rr-loader-screen--overlay" aria-hidden>
+            <RetroLoader label="CREATING ACCOUNT" />
+          </div>
+        ) : null}
         <IonAlert
           isOpen={showAlert}
           onDidDismiss={() => setShowAlert(false)}
