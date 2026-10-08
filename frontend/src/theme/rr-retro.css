@@ -331,12 +331,16 @@ ion-modal.rr-modal .modal-wrapper {
   --min-height: 44px;
 }
 
-.rr-app ion-title {
+.rr-app ion-header ion-toolbar ion-title {
   font-family: "Press Start 2P", monospace !important;
   font-size: var(--fs-l) !important;
   line-height: var(--lh-l) !important;
-  letter-spacing: 1px;
+  letter-spacing: 0;
   text-transform: uppercase;
+  /* No back/menu buttons on tab screens — reclaim default button gutters so the title fits. */
+  --padding-start: 6px;
+  --padding-end: 6px;
+  padding-inline: 6px;
 }
 
 .rr-app ion-content {
@@ -589,8 +593,9 @@ ion-modal.rr-modal .modal-wrapper {
   --home-lh-min: 18px;
   --home-fs-body: 16px;
   --home-lh-body: 24px;
-  padding: calc(var(--safe-top) + var(--home-edge)) var(--home-edge)
-    calc(var(--safe-bottom) + var(--home-edge));
+  /* Top/bottom safe area is handled by ion-header and tab bar; only page gutter here. */
+  padding: var(--home-edge);
+  padding-bottom: calc(var(--home-edge) + 72px);
   max-width: var(--col-max);
   margin: 0 auto;
   box-sizing: border-box;
