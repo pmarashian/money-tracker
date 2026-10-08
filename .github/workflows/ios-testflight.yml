@@ -1,0 +1,164 @@
+name: iOS TestFlight
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ios-testflight
+  cancel-in-progress: false
+
+jobs:
+  secrets-gate:
+    name: Secret gate
+    runs-on: ubuntu-latest
+    outputs:
+      secrets_ok: ${{ steps.check.outputs.secrets_ok }}
+    steps:
+      - name: Check required secrets
+        id: check
+        env:
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_P8_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8_BASE64 }}
+          IOS_DISTRIBUTION_CERTIFICATE_P12_BASE64: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_P12_BASE64 }}
+          IOS_DISTRIBUTION_CERTIFICATE_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_PASSWORD }}
+          MONEY_TRACKER_IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.MONEY_TRACKER_IOS_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          set -euo pipefail
+          missing=()
+          for name in \
+            APP_STORE_CONNECT_API_KEY_ID \
+            APP_STORE_CONNECT_ISSUER_ID \
+            APP_STORE_CONNECT_API_KEY_P8_BASE64 \
+            IOS_DISTRIBUTION_CERTIFICATE_P12_BASE64 \
+            IOS_DISTRIBUTION_CERTIFICATE_PASSWORD \
+            MONEY_TRACKER_IOS_PROVISIONING_PROFILE_BASE64
+          do
+            if [ -z "${!name:-}" ]; then
+              missing+=("$name")
+            fi
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "TestFlight skipped — missing secrets:"
+            printf '  - %s\n' "${missing[@]}"
+            echo "secrets_ok=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "All TestFlight secrets present."
+          echo "secrets_ok=true" >> "$GITHUB_OUTPUT"
+
+  release:
+    name: Archive and upload
+    needs: secrets-gate
+    if: >-
+      needs.secrets-gate.outputs.secrets_ok == 'true' &&
+      github.event_name != 'pull_request'
+    runs-on: macos-latest
+    timeout-minutes: 60
+    outputs:
+      marketing_version: ${{ steps.meta.outputs.marketing_version }}
+      build_number: ${{ steps.meta.outputs.build_number }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build web assets
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          npm ci
+          npm run build
+          if ! grep -rq 'https://money-tracker-backend-wine.vercel.app' dist; then
+            echo "dist does not contain production API URL" >&2
+            exit 1
+          fi
+
+      - name: Capacitor sync iOS
+        working-directory: frontend
+        run: npx cap sync ios
+
+      - name: Resolve marketing version
+        id: meta
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          MV="$(node -p "require('./package.json').version")"
+          echo "marketing_version=${MV}" >> "$GITHUB_OUTPUT"
+          echo "build_number=${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+
+      - name: Archive and upload to TestFlight
+        env:
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_P8_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8_BASE64 }}
+          IOS_DISTRIBUTION_CERTIFICATE_P12_BASE64: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_P12_BASE64 }}
+          IOS_DISTRIBUTION_CERTIFICATE_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_PASSWORD }}
+          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.MONEY_TRACKER_IOS_PROVISIONING_PROFILE_BASE64 }}
+          IOS_BUNDLE_ID: com.phillipmarashian.moneytracker
+          DEVELOPMENT_TEAM: DEW8E9PGR8
+          IOS_REQUIRES_PUSH: "false"
+          IOS_PROJECT: frontend/ios/App/App.xcodeproj
+          IOS_SCHEME: App
+          BUILD_NUMBER: ${{ github.run_number }}
+          MARKETING_VERSION: ${{ steps.meta.outputs.marketing_version }}
+        run: bash .github/scripts/archive-and-upload-testflight.sh
+
+  whats-new:
+    name: TestFlight What to Test
+    needs: [secrets-gate, release]
+    if: >-
+      needs.secrets-gate.outputs.secrets_ok == 'true' &&
+      github.event_name != 'pull_request' &&
+      needs.release.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python deps
+        run: pip install --quiet PyJWT cryptography requests
+
+      - name: Wait for App Store Connect processing
+        id: poll
+        env:
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_P8_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8_BASE64 }}
+          IOS_BUNDLE_ID: com.phillipmarashian.moneytracker
+          MARKETING_VERSION: ${{ needs.release.outputs.marketing_version }}
+          BUILD_NUMBER: ${{ needs.release.outputs.build_number }}
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/poll-testflight-processing.py
+
+      - name: Set What to Test and internal group
+        env:
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_P8_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8_BASE64 }}
+          IOS_BUNDLE_ID: com.phillipmarashian.moneytracker
+          MARKETING_VERSION: ${{ needs.release.outputs.marketing_version }}
+          BUILD_NUMBER: ${{ needs.release.outputs.build_number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_EVENT_BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/set-testflight-whats-new.py

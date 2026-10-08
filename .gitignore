@@ -66,6 +66,7 @@ coverage/
 tasks/
 docs/*
 !docs/push-api.md
+!docs/ios-release.md
 
 logs/
 log-analysis/
