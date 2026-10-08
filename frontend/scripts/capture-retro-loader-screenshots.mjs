@@ -10,6 +10,9 @@ const iPhone = devices['iPhone 12'];
 async function shot(page, url, file) {
   await page.goto(url, { waitUntil: 'networkidle' });
   await page.waitForSelector('.rr-loader__window', { timeout: 10000 });
+  await page.addStyleTag({
+    content: '.rr-loader__coin-frame { animation: none !important; opacity: 0 !important; } .rr-loader__coin-frame--0 { opacity: 1 !important; }',
+  });
   await page.screenshot({ path: path.join(OUT, file), fullPage: false });
 }
 
@@ -26,9 +29,9 @@ async function main() {
   await shot(page, `${BASE}/dev/retro-loader?screen=expenses`, 'retro-loader-expenses.png');
 
   await page.goto(`${BASE}/dev/retro-loader?sprite=1`, { waitUntil: 'networkidle' });
-  const sprite = page.locator('.rr-loader__sprite');
-  await sprite.waitFor({ timeout: 10000 });
-  await sprite.screenshot({ path: path.join(OUT, 'retro-loader-sprite-closeup.png') });
+  const strip = page.locator('.rr-loader__coin-svg--strip');
+  await strip.waitFor({ timeout: 10000 });
+  await strip.screenshot({ path: path.join(OUT, 'retro-loader-sprite-closeup.png') });
 
   await browser.close();
   console.log('Saved screenshots to', OUT);

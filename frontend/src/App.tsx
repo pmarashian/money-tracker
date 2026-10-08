@@ -37,7 +37,7 @@ const InitialRoute: React.FC = () => {
   const { showLoader, blocking } = useRetroPageLoading(loading);
 
   if (blocking) {
-    return showLoader ? <RetroLoaderScreen label="LOADING" /> : null;
+    return <RetroLoaderScreen label="LOADING" showLoader={showLoader} />;
   }
 
   // Redirect based on authentication state

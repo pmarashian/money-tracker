@@ -8,6 +8,7 @@ import { RrWin } from '../components/rr/RrWin';
 import { RrField } from '../components/rr/RrField';
 import { RrCmdButton } from '../components/rr/RrCmdButton';
 import { RetroLoader } from '../components/RetroLoader';
+import { RetroLoaderScreen } from '../components/RetroLoaderPage';
 import { useRetroPageLoading } from '../hooks/useRetroPageLoading';
 
 const Login: React.FC = () => {
@@ -45,11 +46,7 @@ const Login: React.FC = () => {
   };
 
   if (authBlocking) {
-    return (
-      <div className="rr-loader-screen rr-app">
-        {showAuthLoader ? <RetroLoader label="LOADING" /> : null}
-      </div>
-    );
+    return <RetroLoaderScreen label="LOADING" showLoader={showAuthLoader} />;
   }
 
   return (

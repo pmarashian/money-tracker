@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { RetroCoinSprite } from './RetroCoinSprite';
 
 export type RetroLoaderProps = {
   /** Uppercase-friendly status line (animated ellipsis appended when motion allowed). */
@@ -7,14 +8,6 @@ export type RetroLoaderProps = {
   variant?: 'block' | 'inline';
   className?: string;
 };
-
-function CoinSprite() {
-  return (
-    <span className="rr-loader__sprite" aria-hidden>
-      <span className="rr-loader__coin" />
-    </span>
-  );
-}
 
 export function RetroLoader({
   label = 'LOADING',
@@ -32,7 +25,9 @@ export function RetroLoader({
   return (
     <div className={rootClass} role="status" aria-live="polite" aria-busy="true">
       <div className="rr-win rr-win--dq rr-loader__window">
-        <CoinSprite />
+        <div className="rr-loader__sprite-slot">
+          <RetroCoinSprite />
+        </div>
         <p className="rr-loader__label">
           {label}
           <span className="rr-loader__dots" aria-hidden="true">
@@ -40,6 +35,7 @@ export function RetroLoader({
             <span>.</span>
             <span>.</span>
           </span>
+          <span className="rr-loader__cursor" aria-hidden="true" />
         </p>
       </div>
     </div>

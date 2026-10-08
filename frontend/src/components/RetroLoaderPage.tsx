@@ -30,7 +30,7 @@ export function RetroLoaderPage({
           </IonToolbar>
         </IonHeader>
       ) : null}
-      <IonContent>
+      <IonContent className="rr-loader-content">
         <RetroLoaderViewport>
           {showLoader ? <RetroLoader label={label} /> : null}
         </RetroLoaderViewport>
@@ -40,10 +40,16 @@ export function RetroLoaderPage({
 }
 
 /** Full-screen boot/auth gate (no tab header). */
-export function RetroLoaderScreen({ label = 'LOADING' }: { label?: string }) {
+export function RetroLoaderScreen({
+  label = 'LOADING',
+  showLoader = true,
+}: {
+  label?: string;
+  showLoader?: boolean;
+}) {
   return (
-    <div className="rr-loader-screen">
-      <RetroLoader label={label} />
+    <div className="rr-loader-screen" aria-busy={showLoader}>
+      {showLoader ? <RetroLoader label={label} /> : null}
     </div>
   );
 }

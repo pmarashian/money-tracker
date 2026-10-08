@@ -911,6 +911,10 @@ ion-modal.rr-modal .modal-wrapper {
 }
 
 /* —— Shared retro loading state —— */
+.rr-app ion-content.rr-loader-content {
+  --background: #000020;
+}
+
 .rr-loader-viewport {
   display: flex;
   flex: 1;
@@ -941,6 +945,10 @@ ion-modal.rr-modal .modal-wrapper {
   background: rgba(0, 0, 0, 0.88);
 }
 
+.rr-loader-screen--sprite-strip {
+  background: #000020;
+}
+
 .rr-loader--block {
   width: 100%;
   max-width: var(--col-max);
@@ -956,22 +964,57 @@ ion-modal.rr-modal .modal-wrapper {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 14px;
+  justify-content: flex-start;
+  gap: 0;
   width: 100%;
   margin-bottom: 0;
-  padding: calc(var(--bw) + 16px) calc(var(--bw) + 14px);
+  padding: calc(var(--bw) + 20px) calc(var(--bw) + 12px) calc(var(--bw) + 18px);
   text-align: center;
 }
 
+.rr-loader__sprite-slot {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 64px;
+  margin: 0 0 18px;
+}
+
 .rr-loader__label {
+  flex: 0 0 auto;
   margin: 0;
+  width: 100%;
+  max-width: 100%;
   font-family: "Press Start 2P", monospace;
   font-size: var(--fs-l);
   line-height: var(--lh-l);
   color: var(--c-gold);
   letter-spacing: 1px;
   text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.rr-loader__cursor {
+  display: inline-block;
+  width: 10px;
+  height: var(--lh-l);
+  margin-left: 4px;
+  vertical-align: text-bottom;
+  background: var(--c-gold);
+  animation: rr-loader-cursor-blink 0.85s steps(2, start) infinite;
+}
+
+@keyframes rr-loader-cursor-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
 }
 
 .rr-loader__dots span {
@@ -1003,58 +1046,73 @@ ion-modal.rr-modal .modal-wrapper {
 }
 
 .rr-loader__sprite {
-  display: block;
-  width: 48px;
-  height: 48px;
   position: relative;
-}
-
-/* 4-frame gold coin strip (16×16 per frame, scaled 3×) */
-.rr-loader__coin {
   display: block;
-  width: 16px;
-  height: 16px;
-  margin: 16px auto;
-  transform: scale(3);
-  transform-origin: center center;
-  image-rendering: pixelated;
-  background-color: transparent;
-  box-shadow:
-    /* frame 1 — full coin */
-    4px 0 0 #f8b800, 5px 0 0 #f8b800, 6px 0 0 #f8b800, 7px 0 0 #f8b800, 8px 0 0 #f8b800, 9px 0 0 #f8b800, 10px 0 0 #f8b800, 11px 0 0 #f8b800,
-    3px 1px 0 #f87858, 4px 1px 0 #f8b800, 5px 1px 0 #fcfcfc, 6px 1px 0 #f8b800, 7px 1px 0 #f8b800, 8px 1px 0 #f8b800, 9px 1px 0 #fcfcfc, 10px 1px 0 #f8b800, 11px 1px 0 #f87858,
-    2px 2px 0 #d82800, 3px 2px 0 #f8b800, 4px 2px 0 #f8b800, 5px 2px 0 #f8b800, 6px 2px 0 #f8b800, 7px 2px 0 #f8b800, 8px 2px 0 #f8b800, 9px 2px 0 #f8b800, 10px 2px 0 #f8b800, 11px 2px 0 #f8b800, 12px 2px 0 #d82800,
-    2px 3px 0 #f8b800, 3px 3px 0 #f8b800, 4px 3px 0 #d82800, 5px 3px 0 #f8b800, 6px 3px 0 #f8b800, 7px 3px 0 #f8b800, 8px 3px 0 #f8b800, 9px 3px 0 #f8b800, 10px 3px 0 #d82800, 11px 3px 0 #f8b800, 12px 3px 0 #f8b800,
-    2px 4px 0 #f8b800, 3px 4px 0 #f8b800, 4px 4px 0 #f8b800, 5px 4px 0 #f8b800, 6px 4px 0 #f8b800, 7px 4px 0 #f8b800, 8px 4px 0 #f8b800, 9px 4px 0 #f8b800, 10px 4px 0 #f8b800, 11px 4px 0 #f8b800, 12px 4px 0 #f8b800,
-    2px 5px 0 #f8b800, 3px 5px 0 #f8b800, 4px 5px 0 #f8b800, 5px 5px 0 #f8b800, 6px 5px 0 #f8b800, 7px 5px 0 #fcfcfc, 8px 5px 0 #f8b800, 9px 5px 0 #f8b800, 10px 5px 0 #f8b800, 11px 5px 0 #f8b800, 12px 5px 0 #f8b800,
-    2px 6px 0 #f8b800, 3px 6px 0 #f8b800, 4px 6px 0 #f8b800, 5px 6px 0 #f8b800, 6px 6px 0 #f8b800, 7px 6px 0 #f8b800, 8px 6px 0 #f8b800, 9px 6px 0 #f8b800, 10px 6px 0 #f8b800, 11px 6px 0 #f8b800, 12px 6px 0 #f8b800,
-    2px 7px 0 #f87858, 3px 7px 0 #f8b800, 4px 7px 0 #f8b800, 5px 7px 0 #f8b800, 6px 7px 0 #f8b800, 7px 7px 0 #f8b800, 8px 7px 0 #f8b800, 9px 7px 0 #f8b800, 10px 7px 0 #f8b800, 11px 7px 0 #f8b800, 12px 7px 0 #f87858,
-    3px 8px 0 #d82800, 4px 8px 0 #f8b800, 5px 8px 0 #f8b800, 6px 8px 0 #f8b800, 7px 8px 0 #f8b800, 8px 8px 0 #f8b800, 9px 8px 0 #f8b800, 10px 8px 0 #f8b800, 11px 8px 0 #d82800;
-  animation: rr-loader-coin-spin 0.72s steps(4, end) infinite;
+  flex: 0 0 auto;
+  width: 64px;
+  height: 64px;
 }
 
-@keyframes rr-loader-coin-spin {
-  0% {
-    transform: scale(3) scaleX(1);
+.rr-loader__coin-frame {
+  position: absolute;
+  inset: 0;
+  display: block;
+  opacity: 0;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  animation: rr-loader-coin-frame 0.8s steps(1, end) infinite;
+}
+
+.rr-loader__coin-frame--0 {
+  animation-delay: 0s;
+}
+
+.rr-loader__coin-frame--1 {
+  animation-delay: -0.2s;
+}
+
+.rr-loader__coin-frame--2 {
+  animation-delay: -0.4s;
+}
+
+.rr-loader__coin-frame--3 {
+  animation-delay: -0.6s;
+}
+
+.rr-loader__coin-svg {
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.rr-loader__coin-svg--strip {
+  margin: 0 auto;
+}
+
+@keyframes rr-loader-coin-frame {
+  0%,
+  24.99% {
+    opacity: 1;
   }
-  25% {
-    transform: scale(3) scaleX(0.35);
-  }
-  50% {
-    transform: scale(3) scaleX(1);
-  }
-  75% {
-    transform: scale(3) scaleX(0.35);
-  }
+  25%,
   100% {
-    transform: scale(3) scaleX(1);
+    opacity: 0;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .rr-loader__coin {
+  .rr-loader__coin-frame {
     animation: none;
-    transform: scale(3);
+    opacity: 0;
+  }
+
+  .rr-loader__coin-frame--0 {
+    opacity: 1;
+  }
+
+  .rr-loader__cursor {
+    animation: none;
+    opacity: 1;
   }
 
   .rr-loader__dots span {

@@ -13,7 +13,7 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { showLoader, blocking } = useRetroPageLoading(loading);
 
   if (blocking) {
-    return showLoader ? <RetroLoaderScreen label="LOADING" /> : null;
+    return <RetroLoaderScreen label="LOADING" showLoader={showLoader} />;
   }
 
   if (!user) {

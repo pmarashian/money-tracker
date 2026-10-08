@@ -1,6 +1,6 @@
 import { useSearchParams } from 'react-router-dom';
 import { RetroLoaderPage } from '../components/RetroLoaderPage';
-import { RetroLoader } from '../components/RetroLoader';
+import { RetroCoinSprite } from '../components/RetroCoinSprite';
 
 const SCREENS: Record<string, { title: string; label: string }> = {
   home: { title: 'Money Tracker', label: 'LOADING SNAPSHOT' },
@@ -15,13 +15,8 @@ const DevRetroLoaderPreview: React.FC = () => {
 
   if (spriteOnly) {
     return (
-      <div
-        className="rr-app rr-loader-screen"
-        style={{ background: '#000020' }}
-      >
-        <div style={{ transform: 'scale(2.5)', transformOrigin: 'center' }}>
-          <RetroLoader label="LOADING" />
-        </div>
+      <div className="rr-app rr-loader-screen rr-loader-screen--sprite-strip">
+        <RetroCoinSprite mode="strip" />
       </div>
     );
   }
