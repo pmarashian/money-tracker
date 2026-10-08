@@ -4,7 +4,6 @@ import {
   IonPage,
   IonTitle,
   IonToolbar,
-  IonSpinner,
   IonModal,
   IonAlert,
 } from '@ionic/react';
@@ -15,6 +14,8 @@ import { RrWin } from '../components/rr/RrWin';
 import { RrField } from '../components/rr/RrField';
 import { RrMenuPicker } from '../components/rr/RrMenuPicker';
 import { RrCmdButton } from '../components/rr/RrCmdButton';
+import { RetroLoaderPage } from '../components/RetroLoaderPage';
+import { useRetroPageLoading } from '../hooks/useRetroPageLoading';
 
 interface RecurringPattern {
   name: string;
@@ -199,21 +200,15 @@ const Expenses: React.FC = () => {
     }
   };
 
-  if (loading) {
+  const { showLoader, blocking: loadingBlocking } = useRetroPageLoading(loading);
+
+  if (loadingBlocking) {
     return (
-      <IonPage className="rr-app">
-        <IonHeader>
-          <IonToolbar>
-            <IonTitle>Expenses</IonTitle>
-          </IonToolbar>
-        </IonHeader>
-        <IonContent className="ion-text-center">
-          <div className="ion-padding">
-            <IonSpinner name="crescent" />
-            <p className="rr-lead">Loading recurring expenses...</p>
-          </div>
-        </IonContent>
-      </IonPage>
+      <RetroLoaderPage
+        title="Expenses"
+        label="LOADING EXPENSES"
+        showLoader={showLoader}
+      />
     );
   }
 

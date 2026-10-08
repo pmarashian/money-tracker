@@ -7,6 +7,9 @@ import { AuthMenuLink } from '../components/auth/AuthMenuLink';
 import { RrWin } from '../components/rr/RrWin';
 import { RrField } from '../components/rr/RrField';
 import { RrCmdButton } from '../components/rr/RrCmdButton';
+import { RetroLoader } from '../components/RetroLoader';
+import { RetroLoaderScreen } from '../components/RetroLoaderPage';
+import { useRetroPageLoading } from '../hooks/useRetroPageLoading';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -16,6 +19,10 @@ const Login: React.FC = () => {
   const [showAlert, setShowAlert] = useState(false);
   const navigate = useNavigate();
   const { login, user, loading: authLoading } = useAuth();
+  const { showLoader: showAuthLoader, blocking: authBlocking } =
+    useRetroPageLoading(authLoading);
+  const { showLoader: showSubmitLoader, blocking: submitBlocking } =
+    useRetroPageLoading(loading);
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -37,6 +44,10 @@ const Login: React.FC = () => {
     }
     setLoading(false);
   };
+
+  if (authBlocking) {
+    return <RetroLoaderScreen label="LOADING" showLoader={showAuthLoader} />;
+  }
 
   return (
     <AuthScreenShell subtitle="SIGN IN">
@@ -81,6 +92,12 @@ const Login: React.FC = () => {
           </div>
         </RrWin>
       </form>
+
+      {submitBlocking && showSubmitLoader ? (
+        <div className="rr-loader-screen rr-loader-screen--overlay" aria-hidden>
+          <RetroLoader label="SIGNING IN" />
+        </div>
+      ) : null}
 
       <IonAlert
         cssClass="rr-alert"
