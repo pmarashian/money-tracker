@@ -132,6 +132,76 @@ describe('applyAssistantRecurringActions', () => {
     ]);
     expect(deactivated.recurring[0].inactive).toBe(true);
   });
+
+  describe('legacy rows matched by name', () => {
+    const legacy = (): RecurringPattern[] => [
+      { name: 'HIYA', amount: 38, frequency: 'monthly', typicalDayOfMonth: 5 },
+      { name: 'X ai', amount: 30, frequency: 'monthly', typicalDayOfMonth: 22 },
+      { id: 'row-hiya', name: 'hiya', amount: 1, frequency: 'monthly' },
+      { name: 'Keyed', amount: 5, frequency: 'monthly', externalKey: 'chase:keyed' },
+    ];
+
+    it('pauses a legacy row by name (trimmed, case-insensitive) and leaves others alone', () => {
+      const { recurring, results, changed } = applyAssistantRecurringActions(legacy(), [
+        { action: 'pause', name: '  hiya ' },
+      ]);
+      expect(changed).toBe(true);
+      expect(results[0]).toMatchObject({ status: 'ok', index: 0 });
+      expect(recurring[0].paused).toBe(true);
+      expect(recurring[0].userEdited).toBeUndefined();
+      expect(recurring[1].paused).toBeUndefined();
+      expect(recurring[2].paused).toBeUndefined();
+    });
+
+    it('accepts matchName for update without treating name as selector', () => {
+      const { recurring, results } = applyAssistantRecurringActions(legacy(), [
+        { action: 'update', matchName: 'x AI', amount: 32 },
+      ]);
+      expect(results[0].status).toBe('ok');
+      expect(recurring[1].amount).toBe(32);
+      const noSelector = applyAssistantRecurringActions(legacy(), [
+        { action: 'update', name: 'X ai', amount: 40 },
+      ]);
+      expect(noSelector.results[0].status).toBe('error');
+      expect(noSelector.changed).toBe(false);
+    });
+
+    it('does not name-match rows that have an id or externalKey', () => {
+      const { results, changed } = applyAssistantRecurringActions(legacy(), [
+        { action: 'pause', matchName: 'Keyed' },
+      ]);
+      expect(results[0].status).toBe('error');
+      expect(changed).toBe(false);
+    });
+
+    it('errors when the name is ambiguous', () => {
+      const rows = [...legacy(), { name: 'Hiya', amount: 2, frequency: 'monthly' as const }];
+      const { results, changed, recurring } = applyAssistantRecurringActions(rows, [
+        { action: 'pause', matchName: 'HIYA' },
+      ]);
+      expect(results[0].status).toBe('error');
+      expect((results[0] as { error: string }).error).toMatch(/Ambiguous/);
+      expect(changed).toBe(false);
+      expect(recurring.every((r) => !r.paused)).toBe(true);
+    });
+
+    it('does not fall back to name when id is given but not found', () => {
+      const { results } = applyAssistantRecurringActions(legacy(), [
+        { action: 'pause', id: 'missing', name: 'HIYA' },
+      ]);
+      expect(results[0].status).toBe('error');
+    });
+
+    it('still respects userEdited without force', () => {
+      const rows: RecurringPattern[] = [
+        { name: 'Boost Me', amount: 1, frequency: 'monthly', userEdited: true },
+      ];
+      const { results } = applyAssistantRecurringActions(rows, [
+        { action: 'pause', matchName: 'boost me' },
+      ]);
+      expect(results[0].status).toBe('skipped');
+    });
+  });
 });
 
 describe('applyAssistantRecurringActionsForUser', () => {
