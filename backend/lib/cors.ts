@@ -3,6 +3,13 @@ import { NextResponse } from "next/server";
 
 const CAPACITOR_ORIGINS = ["capacitor://localhost", "ionic://localhost"];
 
+/** Vercel web deployment (Vite SPA). */
+const VERCEL_WEB_ORIGINS = ["https://money-tracker-web-ashy.vercel.app"];
+
+/** Vercel PR preview deployments for project money-tracker-web. */
+const VERCEL_PREVIEW_ORIGIN_RE =
+  /^https:\/\/money-tracker-web-[a-z0-9-]+-phillip-marashians-projects\.vercel\.app$/;
+
 /**
  * Allowed CORS origins. Env CORS_ORIGINS is merged with Capacitor origins
  * so that iOS/Android app WebViews work without extra config.
@@ -14,14 +21,19 @@ export function getCorsAllowedOrigins(): string[] {
         "http://localhost:3001",
         "https://your-production-domain.com",
       ];
-  const combined = [...fromEnv, ...CAPACITOR_ORIGINS];
+  const combined = [...fromEnv, ...CAPACITOR_ORIGINS, ...VERCEL_WEB_ORIGINS];
   return Array.from(new Set(combined));
+}
+
+export function isOriginAllowed(origin: string): boolean {
+  if (getCorsAllowedOrigins().includes(origin)) return true;
+  return VERCEL_PREVIEW_ORIGIN_RE.test(origin);
 }
 
 export function isAllowedOrigin(request: NextRequest): boolean {
   const origin = request.headers.get("origin");
   if (!origin) return false;
-  return getCorsAllowedOrigins().includes(origin);
+  return isOriginAllowed(origin);
 }
 
 export function getRequestOrigin(request: NextRequest): string | null {
@@ -37,7 +49,7 @@ export function setCorsHeaders(
   request: NextRequest
 ): void {
   const origin = getRequestOrigin(request);
-  if (origin && isAllowedOrigin(request)) {
+  if (origin && isOriginAllowed(origin)) {
     response.headers.set("Access-Control-Allow-Origin", origin);
     response.headers.set("Access-Control-Allow-Credentials", "true");
   }

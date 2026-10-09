@@ -1,3 +1,7 @@
+# Cookie jars (may contain session tokens)
+cookies.txt
+*.cookies
+
 # Environment files
 .env
 .env.local
