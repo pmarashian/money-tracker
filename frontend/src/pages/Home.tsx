@@ -92,6 +92,7 @@ const Home: React.FC = () => {
 
   const location = useLocation();
   const requestIdRef = useRef(0);
+  const snapshotLoadedOnceRef = useRef(false);
 
   /**
    * Load the snapshot. Always ends the loading state (success, error, or timeout),
@@ -104,12 +105,16 @@ const Home: React.FC = () => {
     const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
+    let timeoutId = 0;
     try {
       const result = await Promise.race([
         apiGet<SnapshotResponse>('/api/snapshot'),
-        new Promise<never>((_, reject) =>
-          window.setTimeout(() => reject(new Error('Timed out loading snapshot')), SNAPSHOT_TIMEOUT_MS)
-        ),
+        new Promise<never>((_, reject) => {
+          timeoutId = window.setTimeout(
+            () => reject(new Error('Timed out loading snapshot')),
+            SNAPSHOT_TIMEOUT_MS
+          );
+        }),
       ]);
       if (requestId !== requestIdRef.current) return;
       if (result.ok && result.data) {
@@ -123,7 +128,11 @@ const Home: React.FC = () => {
       if (requestId !== requestIdRef.current) return;
       setError(err instanceof Error ? err.message : 'Failed to load snapshot');
     } finally {
-      if (requestId === requestIdRef.current) setLoading(false);
+      if (timeoutId) window.clearTimeout(timeoutId);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+        snapshotLoadedOnceRef.current = true;
+      }
     }
   }, [user]);
 
@@ -137,6 +146,18 @@ const Home: React.FC = () => {
       void loadSnapshot();
     }
   }, [user, authLoading, location.pathname, loadSnapshot]);
+
+  useEffect(() => {
+    if (!user) return;
+    const onVisibility = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (location.pathname !== '/app/home') return;
+      if (!snapshotLoadedOnceRef.current) return;
+      void loadSnapshot();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, [user, location.pathname, loadSnapshot]);
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);

@@ -38,15 +38,28 @@ export const COIN_FRAME_MS = 200;
  * WebKit (WKWebView) did not reliably run: the coin blinked instead of spinning.
  * Rendering exactly one frame at a time can never show zero or overlapping frames.
  */
-function useCoinFrame(frameCount: number): number {
+function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const update = () => setReduced(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+  return reduced;
+}
+
+function useCoinFrame(frameCount: number, animate: boolean): number {
   const [frame, setFrame] = useState(0);
   useEffect(() => {
+    if (!animate) return;
     const id = window.setInterval(() => {
       setFrame((f) => (f + 1) % frameCount);
     }, COIN_FRAME_MS);
     return () => window.clearInterval(id);
-  }, [frameCount]);
-  return frame;
+  }, [frameCount, animate]);
+  return animate ? frame : 0;
 }
 
 type RetroCoinSpriteProps = {
@@ -54,7 +67,8 @@ type RetroCoinSpriteProps = {
 };
 
 export function RetroCoinSprite({ mode = 'animate' }: RetroCoinSpriteProps) {
-  const frame = useCoinFrame(FRAME_PIXELS.length);
+  const reducedMotion = usePrefersReducedMotion();
+  const frame = useCoinFrame(FRAME_PIXELS.length, mode === 'animate' && !reducedMotion);
   const frames = useMemo(() => FRAME_PIXELS.map((f) => frameRects(f)), []);
   if (mode === 'strip') {
     const stripSlots = FRAME_PIXELS.length * COIN_SLOT_PX;

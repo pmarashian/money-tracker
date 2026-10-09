@@ -102,8 +102,9 @@ export function useRetroLoaderVisibility(
 
     if (!visible) return;
 
-    const shownAt = shownAtRef.current ?? now();
-    const remaining = Math.max(0, minVisibleMs - (now() - shownAt));
+    const sessionStart =
+      loaderSession.sessionStartedAt ?? shownAtRef.current ?? now();
+    const remaining = Math.max(0, minVisibleMs - (now() - sessionStart));
     const hideTimer = window.setTimeout(() => {
       if (registeredRef.current) {
         registeredRef.current = false;
