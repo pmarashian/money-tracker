@@ -2,17 +2,20 @@ name: iOS TestFlight
 
 # Signed archive + TestFlight upload for Money Tracker (Capacitor iOS).
 # Tooling: xcodebuild + xcrun altool (no fastlane).
+#
+# Upload runs only on workflow_dispatch or push to testflight-request/** (bot-created).
 
 on:
   push:
     branches:
-      - main
+      - "testflight-request/**"
   workflow_dispatch:
   pull_request:
 
 permissions:
   contents: read
   pull-requests: read
+  actions: read
 
 concurrency:
   group: ios-testflight
@@ -63,7 +66,7 @@ jobs:
   ios-compile:
     name: Unsigned iOS archive (compile check)
     needs: secrets
-    if: needs.secrets.outputs.ready != 'true'
+    if: github.event_name != 'pull_request' && needs.secrets.outputs.ready != 'true'
     runs-on: macos-latest
     timeout-minutes: 45
     steps:
@@ -111,7 +114,10 @@ jobs:
   release:
     name: Archive and upload
     needs: secrets
-    if: needs.secrets.outputs.ready == 'true' && (github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main')
+    if: >-
+      needs.secrets.outputs.ready == 'true' &&
+      (github.event_name == 'workflow_dispatch' ||
+      startsWith(github.ref, 'refs/heads/testflight-request/'))
     runs-on: macos-latest
     timeout-minutes: 60
     env:
@@ -187,6 +193,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_SHA: ${{ github.sha }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
           GITHUB_EVENT_BEFORE: ${{ github.event.before }}
         run: python3 .github/scripts/write-what-to-test.py
       - name: Set TestFlight What to Test (en-US)
@@ -198,3 +205,30 @@ jobs:
           BUILD_NUMBER: ${{ github.run_number }}
           IOS_BUNDLE_ID: com.phillipmarashian.moneytracker
         run: python3 .github/scripts/set-testflight-whats-new.py
+
+  cleanup-request-branch:
+    name: Delete TestFlight request branch
+    needs: processing
+    if: >-
+      needs.processing.result == 'success' &&
+      startsWith(github.ref, 'refs/heads/testflight-request/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Delete request branch (best effort)
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+          branch="${GITHUB_REF#refs/heads/}"
+          encoded="$(python3 -c 'import os, urllib.parse; print(urllib.parse.quote(os.environ["BRANCH"], safe=""))' BRANCH="${branch}")"
+          curl -fsS -X DELETE \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/git/refs/heads/${encoded}"
