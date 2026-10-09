@@ -1051,12 +1051,8 @@ ion-modal.rr-modal .modal-wrapper {
   image-rendering: crisp-edges;
 }
 
-/* Coin frames are swapped by JS (RetroCoinSprite useCoinFrame); no CSS keyframes needed. */
-.rr-loader__coin-frame {
-  opacity: 1;
-}
-
-.rr-loader__coin-svg--strip {
+/* Coin frames are stepped by JS (RetroCoinSprite useCoinFrame); no CSS keyframes. */
+.rr-loader__coin-strip {
   display: block;
   margin: 0 auto;
   image-rendering: pixelated;
