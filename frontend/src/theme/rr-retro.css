@@ -1051,25 +1051,9 @@ ion-modal.rr-modal .modal-wrapper {
   image-rendering: crisp-edges;
 }
 
+/* Coin frames are swapped by JS (RetroCoinSprite useCoinFrame); no CSS keyframes needed. */
 .rr-loader__coin-frame {
-  opacity: 0;
-  animation: rr-loader-coin-frame 0.8s steps(1, end) infinite;
-}
-
-.rr-loader__coin-frame--0 {
-  animation-delay: 0s;
-}
-
-.rr-loader__coin-frame--1 {
-  animation-delay: -0.2s;
-}
-
-.rr-loader__coin-frame--2 {
-  animation-delay: -0.4s;
-}
-
-.rr-loader__coin-frame--3 {
-  animation-delay: -0.6s;
+  opacity: 1;
 }
 
 .rr-loader__coin-svg--strip {
@@ -1079,27 +1063,7 @@ ion-modal.rr-modal .modal-wrapper {
   image-rendering: crisp-edges;
 }
 
-@keyframes rr-loader-coin-frame {
-  0%,
-  24.99% {
-    opacity: 1;
-  }
-  25%,
-  100% {
-    opacity: 0;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .rr-loader__coin-frame {
-    animation: none;
-    opacity: 0;
-  }
-
-  .rr-loader__coin-frame--0 {
-    opacity: 1;
-  }
-
   .rr-loader__cursor {
     animation: none;
     opacity: 1;

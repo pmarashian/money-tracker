@@ -271,12 +271,21 @@ export async function getAssistantSnapshotForUser(
       return null;
     }
   }
+  // Migration: pushes made before the assistant key existed only wrote the latest key
+  // and the history list. Fall back to the latest pushed (non-recompute) snapshot.
   const latest = await getLatestSnapshotForUser(userId);
-  if (!latest) return null;
-  if (latest.snapshot.source === 'app-recompute') {
-    return null;
+  if (latest && latest.snapshot.source !== 'app-recompute') {
+    return latest;
   }
-  return latest;
+  const history = await redisOps.lrange(redisKeys.snapshotHistory(userId), 0, 0);
+  if (history.length > 0) {
+    try {
+      return JSON.parse(history[0]) as StoredSnapshotEnvelope;
+    } catch {
+      return null;
+    }
+  }
+  return null;
 }
 
 export async function getLatestSnapshotForUser(
