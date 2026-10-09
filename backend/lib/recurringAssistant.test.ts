@@ -5,8 +5,6 @@ const redisMocks = vi.hoisted(() => ({
   set: vi.fn(),
 }));
 
-const recomputeMock = vi.hoisted(() => vi.fn());
-
 vi.mock('./redis', () => ({
   redisOps: {
     get: redisMocks.get,
@@ -19,10 +17,6 @@ vi.mock('./redis', () => ({
   redisKeys: {
     recurring: (id: string) => `mt:recurring:${id}`,
   },
-}));
-
-vi.mock('./snapshotRecomputeTrigger', () => ({
-  triggerSnapshotRecompute: recomputeMock,
 }));
 
 import {
