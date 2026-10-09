@@ -130,6 +130,11 @@ export const redisOps = {
     return await client.lpush(key, ...values);
   },
 
+  async lrange(key: string, start: number, stop: number): Promise<string[]> {
+    const client = getRedisClient();
+    return await client.lrange(key, start, stop);
+  },
+
   async ltrim(key: string, start: number, stop: number): Promise<'OK'> {
     const client = getRedisClient();
     return await client.ltrim(key, start, stop);

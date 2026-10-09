@@ -1,12 +1,13 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
+  IonButton,
   IonContent,
   IonHeader,
   IonPage,
   IonTitle,
   IonToolbar,
-  useIonViewWillEnter,
 } from '@ionic/react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { apiGet } from '../lib/api';
 import { parseDateOnlyAsLocal } from '../lib/dateUtils';
@@ -43,6 +44,7 @@ interface SnapshotResponse {
   stale: boolean;
 }
 
+const SNAPSHOT_TIMEOUT_MS = 15000;
 const BALANCE_FONT_MAX_PX = 32;
 const BALANCE_FONT_MIN_PX = 16;
 
@@ -88,35 +90,74 @@ const Home: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchSnapshot = async () => {
-    const result = await apiGet<SnapshotResponse>('/api/snapshot');
-    if (result.ok && result.data) {
-      setSnapshotResponse(result.data);
-    } else if (result.status === 401) {
-      setError('Authentication required');
-    } else {
-      setError(result.error || 'Failed to load snapshot');
-    }
-  };
+  const location = useLocation();
+  const requestIdRef = useRef(0);
+  const snapshotLoadedOnceRef = useRef(false);
 
-  const loadSnapshot = () => {
+  /**
+   * Load the snapshot. Always ends the loading state (success, error, or timeout),
+   * so Home can never sit on the spinner forever.
+   * NOTE: the app uses react-router <Routes>, not IonRouterOutlet, so Ionic page
+   * lifecycle hooks (useIonViewWillEnter) never fire here. Refetch on route entry instead.
+   */
+  const loadSnapshot = useCallback(async () => {
     if (!user) return;
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
-    fetchSnapshot().finally(() => setLoading(false));
-  };
-
-  useIonViewWillEnter(() => {
-    if (user) {
-      loadSnapshot();
+    let timeoutId = 0;
+    try {
+      const result = await Promise.race([
+        apiGet<SnapshotResponse>('/api/snapshot'),
+        new Promise<never>((_, reject) => {
+          timeoutId = window.setTimeout(
+            () => reject(new Error('Timed out loading snapshot')),
+            SNAPSHOT_TIMEOUT_MS
+          );
+        }),
+      ]);
+      if (requestId !== requestIdRef.current) return;
+      if (result.ok && result.data) {
+        setSnapshotResponse(result.data);
+      } else if (result.status === 401) {
+        setError('Authentication required');
+      } else {
+        setError(result.error || 'Failed to load snapshot');
+      }
+    } catch (err) {
+      if (requestId !== requestIdRef.current) return;
+      setError(err instanceof Error ? err.message : 'Failed to load snapshot');
+    } finally {
+      if (timeoutId) window.clearTimeout(timeoutId);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+        snapshotLoadedOnceRef.current = true;
+      }
     }
-  });
+  }, [user]);
 
   useEffect(() => {
-    if (!user && !authLoading) {
+    if (authLoading) return;
+    if (!user) {
       setLoading(false);
+      return;
     }
-  }, [user, authLoading]);
+    if (location.pathname === '/app/home') {
+      void loadSnapshot();
+    }
+  }, [user, authLoading, location.pathname, loadSnapshot]);
+
+  useEffect(() => {
+    if (!user) return;
+    const onVisibility = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (location.pathname !== '/app/home') return;
+      if (!snapshotLoadedOnceRef.current) return;
+      void loadSnapshot();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, [user, location.pathname, loadSnapshot]);
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
@@ -180,6 +221,9 @@ const Home: React.FC = () => {
         <IonContent className="ion-padding">
           <RrWin tag="ERROR">
             <p className="rr-danger rr-fs-m">{error}</p>
+            <IonButton expand="block" onClick={() => void loadSnapshot()}>
+              Retry
+            </IonButton>
           </RrWin>
         </IonContent>
       </IonPage>
@@ -202,6 +246,9 @@ const Home: React.FC = () => {
               Your assistant has not pushed a financial snapshot yet. Once the first push lands,
               your key balances will show here.
             </p>
+            <IonButton expand="block" onClick={() => void loadSnapshot()}>
+              Refresh
+            </IonButton>
           </RrWin>
         </IonContent>
       </IonPage>

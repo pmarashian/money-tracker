@@ -5,6 +5,7 @@ const redisMocks = vi.hoisted(() => ({
   set: vi.fn(),
   lpush: vi.fn(),
   ltrim: vi.fn(),
+  lrange: vi.fn(),
 }));
 
 vi.mock('./redis', () => ({
@@ -13,6 +14,7 @@ vi.mock('./redis', () => ({
     set: redisMocks.set,
     lpush: redisMocks.lpush,
     ltrim: redisMocks.ltrim,
+    lrange: redisMocks.lrange,
     delete: vi.fn(),
     exists: vi.fn(),
     expire: vi.fn(),
@@ -27,6 +29,7 @@ vi.mock('./redis', () => ({
 }));
 
 import {
+  getAssistantSnapshotForUser,
   validateSnapshotPayload,
   verifyPushToken,
   isSnapshotStale,
@@ -134,5 +137,53 @@ describe('saveAssistantPushSnapshot', () => {
       0,
       SNAPSHOT_HISTORY_MAX - 1
     );
+  });
+});
+
+describe('getAssistantSnapshotForUser fallback', () => {
+  const env = (source: string) =>
+    JSON.stringify({
+      userId: 'user-1',
+      email: 'p@example.com',
+      receivedAt: '2026-10-09T13:29:13.696Z',
+      snapshot: { ...validSnapshot, source },
+    });
+
+  beforeEach(() => {
+    redisMocks.get.mockReset();
+    redisMocks.lrange.mockReset();
+  });
+
+  it('uses the assistant key when present', async () => {
+    redisMocks.get.mockImplementation(async (k: string) =>
+      k === 'mt:snapshot:assistant:user-1' ? env('assistant-push') : null
+    );
+    const got = await getAssistantSnapshotForUser('user-1');
+    expect(got?.snapshot.source).toBe('assistant-push');
+  });
+
+  it('falls back to latest pushed snapshot when no assistant key (pre-migration push)', async () => {
+    redisMocks.get.mockImplementation(async (k: string) =>
+      k === 'mt:snapshot:user-1' ? env('assistant-push') : null
+    );
+    const got = await getAssistantSnapshotForUser('user-1');
+    expect(got?.snapshot.source).toBe('assistant-push');
+    expect(redisMocks.lrange).not.toHaveBeenCalled();
+  });
+
+  it('falls back to history head when latest is an app recompute', async () => {
+    redisMocks.get.mockImplementation(async (k: string) =>
+      k === 'mt:snapshot:user-1' ? env('app-recompute') : null
+    );
+    redisMocks.lrange.mockResolvedValue([env('assistant-push')]);
+    const got = await getAssistantSnapshotForUser('user-1');
+    expect(got?.snapshot.source).toBe('assistant-push');
+    expect(redisMocks.lrange).toHaveBeenCalledWith('mt:snapshot:history:user-1', 0, 0);
+  });
+
+  it('returns null when nothing was ever pushed', async () => {
+    redisMocks.get.mockResolvedValue(null);
+    redisMocks.lrange.mockResolvedValue([]);
+    expect(await getAssistantSnapshotForUser('user-1')).toBeNull();
   });
 });

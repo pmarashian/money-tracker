@@ -11,6 +11,7 @@ vi.mock('./redis', () => ({
     set: redisMocks.set,
     lpush: vi.fn(),
     ltrim: vi.fn(),
+    lrange: vi.fn().mockResolvedValue([]),
     delete: vi.fn(),
     exists: vi.fn(),
     expire: vi.fn(),
