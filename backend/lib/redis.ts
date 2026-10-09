@@ -66,6 +66,7 @@ export const redisKeys = {
 
   // Assistant-pushed financial snapshot (latest + history list)
   snapshot: (userId: string) => `mt:snapshot:${userId}`,
+  snapshotAssistant: (userId: string) => `mt:snapshot:assistant:${userId}`,
   snapshotHistory: (userId: string) => `mt:snapshot:history:${userId}`,
 };
 

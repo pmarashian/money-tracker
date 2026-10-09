@@ -5,8 +5,8 @@ import {
   IonPage,
   IonTitle,
   IonToolbar,
+  useIonViewWillEnter,
 } from '@ionic/react';
-import { useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { apiGet } from '../lib/api';
 import { parseDateOnlyAsLocal } from '../lib/dateUtils';
@@ -83,7 +83,6 @@ function HomeBalanceAmount({ amount }: { amount: string }) {
 }
 
 const Home: React.FC = () => {
-  const location = useLocation();
   const { user, loading: authLoading } = useAuth();
   const [snapshotResponse, setSnapshotResponse] = useState<SnapshotResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -100,15 +99,24 @@ const Home: React.FC = () => {
     }
   };
 
+  const loadSnapshot = () => {
+    if (!user) return;
+    setLoading(true);
+    setError(null);
+    fetchSnapshot().finally(() => setLoading(false));
+  };
+
+  useIonViewWillEnter(() => {
+    if (user) {
+      loadSnapshot();
+    }
+  });
+
   useEffect(() => {
-    if (user && location.pathname === '/app/home') {
-      setLoading(true);
-      setError(null);
-      fetchSnapshot().finally(() => setLoading(false));
-    } else if (!authLoading) {
+    if (!user && !authLoading) {
       setLoading(false);
     }
-  }, [user, authLoading, location.pathname]);
+  }, [user, authLoading]);
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
