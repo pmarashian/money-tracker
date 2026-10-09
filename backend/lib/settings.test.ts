@@ -92,4 +92,26 @@ describe('advanceNextPaycheckDateIfNeeded', () => {
     expect(settings.nextPaycheckDate).toBe('2025-02-13');
     expect(redisMocks.set).not.toHaveBeenCalled();
   });
+
+  it('does not advance nextPaycheckDate when it equals today', async () => {
+    redisMocks.get.mockResolvedValue(
+      JSON.stringify({ ...stubSettings, nextPaycheckDate: '2025-02-12' })
+    );
+
+    const settings = await advanceNextPaycheckDateIfNeeded(mockUserId);
+
+    expect(settings.nextPaycheckDate).toBe('2025-02-12');
+    expect(redisMocks.set).not.toHaveBeenCalled();
+  });
+
+  it('advances nextPaycheckDate when it is strictly before today', async () => {
+    redisMocks.get.mockResolvedValue(
+      JSON.stringify({ ...stubSettings, nextPaycheckDate: '2025-02-11' })
+    );
+
+    const settings = await advanceNextPaycheckDateIfNeeded(mockUserId);
+
+    expect(settings.nextPaycheckDate).toBe('2025-02-25');
+    expect(redisMocks.set).toHaveBeenCalled();
+  });
 });

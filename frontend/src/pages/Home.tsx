@@ -32,9 +32,11 @@ interface MoneySnapshot {
   low_after_topoff: SnapshotAmountDate;
   status: 'on_track' | 'needs_topoff';
   topoff_needed_now: number;
+  topoff_needed_now_by?: string | null;
   bills: unknown[];
   balance_before_next_bonus?: SnapshotAmountDate;
   min_balance?: number;
+  source?: 'app-recompute' | 'assistant-push';
 }
 
 interface SnapshotResponse {
@@ -256,6 +258,13 @@ const Home: React.FC = () => {
   }
 
   const asOfDisplay = snapshotResponse?.as_of ?? snapshot.as_of;
+  const receivedAt = snapshotResponse?.received_at;
+  const updatedLabel =
+    snapshot.source === 'app-recompute' && receivedAt
+      ? `Recalculated ${formatAsOfNy(receivedAt)}`
+      : `Updated ${formatAsOfNy(asOfDisplay)} (New York)`;
+  const topoffByDate =
+    snapshot.topoff_needed_now_by ?? snapshot.projected_low_to_bonus.date;
   const showTopoffNow = snapshot.topoff_needed_now > 0;
   const beforeBonus = snapshot.balance_before_next_bonus;
   const statusClass =
@@ -298,14 +307,14 @@ const Home: React.FC = () => {
           {showTopoffNow && (
             <RrWin tag="TOP OFF" className="home-hero-win home-hero-win--topoff">
               <p className="rr-hero-label">
-                Top off by {formatShortDate(snapshot.projected_low_to_bonus.date)}
+                Top off by {formatShortDate(topoffByDate)}
               </p>
               <p className="rr-hero-value">{formatCurrency(snapshot.topoff_needed_now)}</p>
             </RrWin>
           )}
 
           <p className="home-snapshot__updated">
-            Updated {formatAsOfNy(asOfDisplay)} (New York)
+            {updatedLabel}
           </p>
         </div>
       </IonContent>

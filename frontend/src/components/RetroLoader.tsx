@@ -35,7 +35,6 @@ export function RetroLoader({
             <span>.</span>
             <span>.</span>
           </span>
-          <span className="rr-loader__cursor" aria-hidden="true" />
         </p>
       </div>
     </div>

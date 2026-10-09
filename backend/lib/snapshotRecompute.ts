@@ -1,6 +1,6 @@
 import { redisKeys, redisOps } from './redis';
 import type { RecurringPattern } from './recurring';
-import { getUserSettings, getTodayInUserTz, advanceNextPaycheckDateIfNeeded } from './settings';
+import { getUserSettings, getTodayInUserTz } from './settings';
 import {
   DEFAULT_MIN_BALANCE,
   DEFAULT_TOPOFF_ROUND_UP,
@@ -65,7 +65,7 @@ export async function recomputeSnapshotForUser(
   }
 
   const assistant = assistantEnvelope.snapshot;
-  const settings = await advanceNextPaycheckDateIfNeeded(userId);
+  const settings = await getUserSettings(userId);
   const recurringRaw = await redisOps.get(redisKeys.recurring(userId));
   let recurring: RecurringPattern[] = [];
   if (recurringRaw) {

@@ -134,6 +134,11 @@ export function paydaysBetween(
   const endD = parseDateOnlyUtc(end);
   const out: { actual: string; nominal: string }[] = [];
   let nominal = parseDateOnlyUtc(anchorFriday);
+  // Walk the anchor back so a future Friday still yields paydays on/after start.
+  const startMinusInterval = addDaysUtc(startD, -PAYCHECK_INTERVAL_DAYS);
+  while (nominal >= startMinusInterval) {
+    nominal = addDaysUtc(nominal, -PAYCHECK_INTERVAL_DAYS);
+  }
   const endPlus = addDaysUtc(endD, PAYCHECK_INTERVAL_DAYS);
   while (nominal <= endPlus) {
     const actual = rollBack(nominal);

@@ -93,14 +93,14 @@ export function getTodayInUserTz(timezone?: string): string {
 }
 
 /**
- * If nextPaycheckDate is set and <= today (in user timezone), advance it by 14 days and save. Returns settings (possibly updated).
+ * If nextPaycheckDate is set and strictly before today (in user timezone), advance it by 14 days and save. Returns settings (possibly updated).
  */
 export async function advanceNextPaycheckDateIfNeeded(userId: string): Promise<UserSettings> {
   const settings = await getUserSettings(userId);
   if (!settings.nextPaycheckDate) return settings;
 
   const todayStr = getTodayInUserTz(settings.timezone);
-  if (settings.nextPaycheckDate > todayStr) return settings;
+  if (settings.nextPaycheckDate >= todayStr) return settings;
 
   const payDate = new Date(settings.nextPaycheckDate + 'T00:00:00.000Z');
   const nextDate = new Date(payDate.getTime() + 14 * 24 * 60 * 60 * 1000);

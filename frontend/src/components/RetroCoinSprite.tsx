@@ -1,42 +1,16 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import {
-  COIN_ART_PX,
-  COIN_FRAME_PX,
-  COIN_PALETTE,
-  COIN_SLOT_PX,
-  COIN_STRIP_PX,
-  FRAME_PIXELS,
-} from './retroCoinArt';
+import { useEffect, useState } from 'react';
+import coinSpritesheet from '../assets/rd-coin-spritesheet.png';
 
-function frameRects(frame: string[], offsetX = 0) {
-  const rects: ReactNode[] = [];
-  frame.forEach((row, y) => {
-    for (let x = 0; x < COIN_ART_PX; x += 1) {
-      const fill = COIN_PALETTE[row[x]];
-      if (!fill) continue;
-      rects.push(
-        <rect
-          key={`${offsetX}-${x}-${y}`}
-          x={offsetX + x}
-          y={y}
-          width={1}
-          height={1}
-          fill={fill}
-        />
-      );
-    }
-  });
-  return rects;
-}
-
-/** One full spin = 4 frames at 200ms (same 0.8s cycle as before). */
-export const COIN_FRAME_MS = 200;
+/** Spritesheet: 192×32, six 32×32 frames in one row. */
+const FRAME_COUNT = 6;
+/** Displayed size (2× source for crisp pixel scale). */
+export const COIN_FRAME_PX = 64;
+/** ~133ms × 6 ≈ 0.8s per full spin (same cycle length as the old 4×200ms loader). */
+export const COIN_FRAME_MS = 133;
 
 /**
- * Frame index driven by JS, not CSS keyframes. The old version stacked 4 SVG <g>
- * frames and toggled opacity with steps() keyframes + negative delays, which iOS
- * WebKit (WKWebView) did not reliably run: the coin blinked instead of spinning.
- * Rendering exactly one frame at a time can never show zero or overlapping frames.
+ * Frame index driven by JS, not CSS keyframes. Rendering exactly one frame at a
+ * time avoids iOS WebKit opacity/keyframe blinks on stacked SVG frames.
  */
 function usePrefersReducedMotion(): boolean {
   const [reduced, setReduced] = useState(false);
@@ -68,37 +42,40 @@ type RetroCoinSpriteProps = {
 
 export function RetroCoinSprite({ mode = 'animate' }: RetroCoinSpriteProps) {
   const reducedMotion = usePrefersReducedMotion();
-  const frame = useCoinFrame(FRAME_PIXELS.length, mode === 'animate' && !reducedMotion);
-  const frames = useMemo(() => FRAME_PIXELS.map((f) => frameRects(f)), []);
+  const frame = useCoinFrame(FRAME_COUNT, mode === 'animate' && !reducedMotion);
+
   if (mode === 'strip') {
-    const stripSlots = FRAME_PIXELS.length * COIN_SLOT_PX;
     return (
-      <svg
-        className="rr-loader__coin-svg rr-loader__coin-svg--strip"
-        viewBox={`0 0 ${stripSlots} ${COIN_ART_PX}`}
-        width={COIN_STRIP_PX}
-        height={COIN_FRAME_PX}
-        shapeRendering="crispEdges"
+      <span
+        className="rr-loader__coin-strip"
+        style={{
+          width: COIN_FRAME_PX * FRAME_COUNT,
+          height: COIN_FRAME_PX,
+          backgroundImage: `url(${coinSpritesheet})`,
+          backgroundSize: `${COIN_FRAME_PX * FRAME_COUNT}px ${COIN_FRAME_PX}px`,
+          backgroundRepeat: 'no-repeat',
+          imageRendering: 'pixelated',
+        }}
         aria-hidden
-      >
-        {FRAME_PIXELS.flatMap((frame, i) => frameRects(frame, i * COIN_SLOT_PX))}
-      </svg>
+      />
     );
   }
 
   return (
     <span className="rr-loader__sprite" aria-hidden>
-      <svg
+      <span
         className="rr-loader__coin-stage"
-        viewBox={`0 0 ${COIN_ART_PX} ${COIN_ART_PX}`}
-        width={COIN_FRAME_PX}
-        height={COIN_FRAME_PX}
-        shapeRendering="crispEdges"
-      >
-        <g className="rr-loader__coin-frame" data-frame={frame}>
-          {frames[frame]}
-        </g>
-      </svg>
+        data-frame={frame}
+        style={{
+          width: COIN_FRAME_PX,
+          height: COIN_FRAME_PX,
+          backgroundImage: `url(${coinSpritesheet})`,
+          backgroundSize: `${COIN_FRAME_PX * FRAME_COUNT}px ${COIN_FRAME_PX}px`,
+          backgroundPosition: `-${frame * COIN_FRAME_PX}px 0`,
+          backgroundRepeat: 'no-repeat',
+          imageRendering: 'pixelated',
+        }}
+      />
     </span>
   );
 }

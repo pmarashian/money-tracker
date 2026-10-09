@@ -4,7 +4,6 @@ import {
   IonPage,
   IonTitle,
   IonToolbar,
-  IonToast,
 } from '@ionic/react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -35,21 +34,12 @@ const Settings: React.FC = () => {
   const [settings, setSettings] = useState<UserSettings>({ ...DEFAULT_SETTINGS });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-
-  const [toastOpen, setToastOpen] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-  const [toastColor, setToastColor] = useState<'success' | 'danger'>('success');
+  const [settingsError, setSettingsError] = useState('');
 
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordChanging, setPasswordChanging] = useState(false);
   const [passwordError, setPasswordError] = useState('');
-
-  const showToast = (message: string, color: 'success' | 'danger') => {
-    setToastMessage(message);
-    setToastColor(color);
-    setToastOpen(true);
-  };
 
   useEffect(() => {
     loadSettings();
@@ -63,22 +53,22 @@ const Settings: React.FC = () => {
           ? result.data.paycheckAmount
           : DEFAULT_SETTINGS.paycheckAmount;
       setSettings({ paycheckAmount });
+      setSettingsError('');
     } else if (!result.ok) {
-      showToast(result.error || 'Failed to load settings', 'danger');
+      setSettingsError(result.error || 'Failed to load settings');
     }
     setLoading(false);
   };
 
   const saveSettings = async () => {
     setSaving(true);
+    setSettingsError('');
     const paycheckNum = Number(settings.paycheckAmount);
     const result = await apiPatch('/api/settings', {
       paycheckAmount: !Number.isNaN(paycheckNum) ? paycheckNum : 2000,
     });
-    if (result.ok) {
-      showToast('Paycheck amount saved', 'success');
-    } else {
-      showToast(result.error || 'Failed to save settings', 'danger');
+    if (!result.ok) {
+      setSettingsError(result.error || 'Failed to save settings');
     }
     setSaving(false);
   };
@@ -101,13 +91,11 @@ const Settings: React.FC = () => {
     setPasswordChanging(true);
     const result = await changePassword(newPassword);
     if (result.success) {
-      showToast('Password changed successfully', 'success');
       setNewPassword('');
       setConfirmPassword('');
       setPasswordError('');
     } else {
       setPasswordError(result.error || 'Failed to change password');
-      showToast(result.error || 'Failed to change password', 'danger');
     }
     setPasswordChanging(false);
   };
@@ -164,6 +152,7 @@ const Settings: React.FC = () => {
                   }),
               }}
             />
+            {settingsError && <p className="rr-danger rr-fs-m">{settingsError}</p>}
             <RrCmdButton onClick={saveSettings} disabled={saving} showCursor={!saving}>
               {saving ? 'Saving...' : 'Save paycheck'}
             </RrCmdButton>
@@ -216,14 +205,6 @@ const Settings: React.FC = () => {
             </RrCmdButton>
           </RrWin>
         </div>
-
-        <IonToast
-          isOpen={toastOpen}
-          onDidDismiss={() => setToastOpen(false)}
-          message={toastMessage}
-          color={toastColor}
-          duration={3000}
-        />
       </IonContent>
     </IonPage>
   );
