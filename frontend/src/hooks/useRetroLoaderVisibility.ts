@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 const DEFAULT_DELAY_MS = 150;
-const DEFAULT_MIN_VISIBLE_MS = 1000;
+const DEFAULT_MIN_VISIBLE_MS = 2000;
 /**
  * If another loader instance was on screen within this window, the next one shows
  * immediately (no delay gap) and continues the same "session". This covers handoffs

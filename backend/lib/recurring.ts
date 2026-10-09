@@ -8,6 +8,8 @@ export interface RecurringPattern {
   amount: number;
   frequency: 'monthly' | 'weekly' | 'biweekly';
   typicalDayOfMonth?: number;
+  /** Stable row id (assistant create / updates) */
+  id?: string;
   /** Stable id from Chase / assistant sync */
   externalKey?: string;
   source?: 'auto' | 'manual';

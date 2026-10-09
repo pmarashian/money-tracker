@@ -171,7 +171,7 @@ function getProjectionPeriodDays(userSettings: UserSettings, nowUtcMidnight: Dat
  * projectedBalance = present balance + net flow over the period.
  */
 export async function calculateFinancialHealth(userId: string): Promise<HealthProjection> {
-  // Get user settings (auto-advance next paycheck date if in the past or today in user timezone)
+  // Get user settings (auto-advance next paycheck date if strictly before today in user timezone)
   const userSettings = await advanceNextPaycheckDateIfNeeded(userId);
 
   const todayStr = getTodayInUserTz(userSettings.timezone);

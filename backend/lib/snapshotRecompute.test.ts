@@ -28,6 +28,7 @@ vi.mock('./redis', () => ({
 }));
 
 import { recomputeSnapshotForUser } from './snapshotRecompute';
+import { paydaysBetween, paycheckAnchorFromNextActual } from './projectionCore';
 
 const assistantEnvelope = {
   userId: 'user-1',
@@ -104,5 +105,88 @@ describe('recomputeSnapshotForUser', () => {
     redisMocks.get.mockResolvedValue(null);
     const envelope = await recomputeSnapshotForUser('user-1', 'test@example.com');
     expect(envelope).toBeNull();
+  });
+
+  it('includes an Oct 9 paycheck when today is 2026-10-09 and nextPaycheckDate is 2026-10-23', async () => {
+    let paycheckAmount = 2000;
+    redisMocks.get.mockImplementation(async (key: string) => {
+      if (key === 'mt:snapshot:assistant:user-1') {
+        const { paycheck_anchor_friday: _omit, ...snapshot } = assistantEnvelope.snapshot;
+        return JSON.stringify({
+          ...assistantEnvelope,
+          snapshot: {
+            ...snapshot,
+            as_of: '2026-10-09T12:00:00.000Z',
+            current_available_balance: 585.83,
+          },
+        });
+      }
+      if (key === 'mt:settings:user-1') {
+        return JSON.stringify({
+          balance: 0,
+          paycheckAmount,
+          nextBonusDate: '2026-10-31',
+          nextPaycheckDate: '2026-10-23',
+        });
+      }
+      if (key === 'mt:recurring:user-1') {
+        return JSON.stringify([]);
+      }
+      return null;
+    });
+
+    const envelope = await recomputeSnapshotForUser('user-1', 'test@example.com');
+    expect(envelope).not.toBeNull();
+
+    const anchor = paycheckAnchorFromNextActual('2026-10-23');
+    const pays = paydaysBetween(anchor, '2026-10-09', '2026-10-31');
+    expect(pays.map((p) => p.actual)).toContain('2026-10-09');
+
+    // Two paydays on/before the next-bonus window (Oct 9 and Oct 23), no bills.
+    expect(envelope!.snapshot.balance_before_next_bonus?.amount).toBe(4585.83);
+    expect(envelope!.snapshot.current_available_balance).toBe(585.83);
+  });
+
+  it('yields identical snapshots when paycheck amount is changed and restored', async () => {
+    let paycheckAmount = 1000;
+    redisMocks.get.mockImplementation(async (key: string) => {
+      if (key === 'mt:snapshot:assistant:user-1') {
+        return JSON.stringify(assistantEnvelope);
+      }
+      if (key === 'mt:settings:user-1') {
+        return JSON.stringify({
+          balance: 0,
+          paycheckAmount,
+          nextBonusDate: '2026-10-31',
+          nextPaycheckDate: '2026-10-10',
+        });
+      }
+      if (key === 'mt:recurring:user-1') {
+        return JSON.stringify([
+          {
+            name: 'Utilities',
+            amount: 200,
+            frequency: 'monthly',
+            typicalDayOfMonth: 15,
+            nextDate: '2026-10-15',
+          },
+        ]);
+      }
+      return null;
+    });
+
+    const first = await recomputeSnapshotForUser('user-1', 'test@example.com');
+    paycheckAmount = 1500;
+    const changed = await recomputeSnapshotForUser('user-1', 'test@example.com');
+    paycheckAmount = 1000;
+    const restored = await recomputeSnapshotForUser('user-1', 'test@example.com');
+
+    expect(first).not.toBeNull();
+    expect(changed).not.toBeNull();
+    expect(restored).not.toBeNull();
+    expect(changed!.snapshot.balance_before_next_bonus?.amount).not.toBe(
+      first!.snapshot.balance_before_next_bonus?.amount
+    );
+    expect(restored!.snapshot).toEqual(first!.snapshot);
   });
 });

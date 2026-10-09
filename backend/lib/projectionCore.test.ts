@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   computeFollowingBonusDate,
+  paydaysBetween,
   runProjection,
   type ProjectionBill,
 } from './projectionCore';
@@ -79,5 +80,15 @@ describe('projectionCore (Python parity fixture)', () => {
         ? 'on_track'
         : 'needs_topoff';
     expect(status).toBe(FIXTURE.expected.status);
+  });
+});
+
+describe('paydaysBetween', () => {
+  it('walks a future Friday anchor backward so paydays on or after start are not dropped', () => {
+    const pays = paydaysBetween('2026-10-23', '2026-10-09', '2026-10-31');
+    const actuals = pays.map((p) => p.actual);
+    expect(actuals).toContain('2026-10-09');
+    expect(actuals).toContain('2026-10-23');
+    expect(actuals.filter((d) => d < '2026-10-09')).toEqual([]);
   });
 });
