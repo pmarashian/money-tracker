@@ -51,6 +51,7 @@ function parseActions(body: unknown): { actions: AssistantRecurringAction[] } | 
     };
     if (typeof r.id === 'string') action.id = r.id;
     if (typeof r.externalKey === 'string') action.externalKey = r.externalKey;
+    if (typeof r.matchName === 'string') action.matchName = r.matchName;
     if (r.force !== undefined) action.force = Boolean(r.force);
     if (typeof r.name === 'string') action.name = r.name;
     if (r.amount !== undefined) {

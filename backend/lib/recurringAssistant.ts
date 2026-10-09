@@ -15,6 +15,11 @@ export interface AssistantRecurringAction {
   action: AssistantRecurringActionName;
   id?: string;
   externalKey?: string;
+  /**
+   * Target a legacy row (no id and no externalKey) by exact name (trimmed, case-insensitive).
+   * For pause/unpause/deactivate, `name` is used as the target when matchName is omitted.
+   */
+  matchName?: string;
   force?: boolean;
   name?: string;
   amount?: number;
@@ -59,6 +64,21 @@ function isFrequency(value: unknown): value is RecurringPattern['frequency'] {
   return typeof value === 'string' && FREQUENCIES.includes(value as (typeof FREQUENCIES)[number]);
 }
 
+function normalizeName(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function targetName(action: AssistantRecurringAction): string {
+  if (typeof action.matchName === 'string' && action.matchName.trim()) {
+    return action.matchName;
+  }
+  // For update, `name` is the new value, never a selector.
+  if (action.action !== 'update' && typeof action.name === 'string' && action.name.trim()) {
+    return action.name;
+  }
+  return '';
+}
+
 function findIndex(
   list: RecurringPattern[],
   action: AssistantRecurringAction
@@ -66,18 +86,38 @@ function findIndex(
   const id = typeof action.id === 'string' ? action.id.trim() : '';
   const externalKey =
     typeof action.externalKey === 'string' ? action.externalKey.trim() : '';
-  if (!id && !externalKey) {
-    return { error: 'id or externalKey is required' };
+  if (id || externalKey) {
+    if (id) {
+      const byId = list.findIndex((row) => row.id === id);
+      if (byId >= 0) return { index: byId };
+    }
+    if (externalKey) {
+      const byKey = list.findIndex((row) => row.externalKey === externalKey);
+      if (byKey >= 0) return { index: byKey };
+    }
+    return { error: 'Recurring bill not found' };
   }
-  if (id) {
-    const byId = list.findIndex((row) => row.id === id);
-    if (byId >= 0) return { index: byId };
+
+  const name = targetName(action);
+  if (!name) {
+    return { error: 'id, externalKey, or matchName is required' };
   }
-  if (externalKey) {
-    const byKey = list.findIndex((row) => row.externalKey === externalKey);
-    if (byKey >= 0) return { index: byKey };
+  const wanted = normalizeName(name);
+  const matches: number[] = [];
+  list.forEach((row, index) => {
+    const hasId = typeof row.id === 'string' && row.id.trim() !== '';
+    const hasKey = typeof row.externalKey === 'string' && row.externalKey.trim() !== '';
+    if (!hasId && !hasKey && typeof row.name === 'string' && normalizeName(row.name) === wanted) {
+      matches.push(index);
+    }
+  });
+  if (matches.length === 0) {
+    return { error: 'Recurring bill not found (name match only covers rows without id/externalKey)' };
   }
-  return { error: 'Recurring bill not found' };
+  if (matches.length > 1) {
+    return { error: `Ambiguous name: ${matches.length} rows without id/externalKey match "${name.trim()}"` };
+  }
+  return { index: matches[0] };
 }
 
 function parseDay(action: AssistantRecurringAction): number | undefined | { error: string } {
