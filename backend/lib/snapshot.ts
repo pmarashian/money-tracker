@@ -29,6 +29,16 @@ export interface MoneySnapshot {
   status: SnapshotStatus;
   topoff_needed_now: number;
   bills: SnapshotBill[];
+  /** Set when the app recomputes locally; assistant push omits or overwrites. */
+  source?: 'app-recompute' | 'assistant-push';
+  balance_before_next_bonus?: SnapshotAmountDate;
+  min_balance?: number;
+  topoff_round_up?: number;
+  topoff_needed_after_bonus_exact?: number;
+  topoff_needed_now_exact?: number;
+  topoff_needed_now_by?: string | null;
+  scenarios?: Record<string, unknown>;
+  paycheck_anchor_friday?: string;
 }
 
 export interface StoredSnapshotEnvelope {
@@ -192,7 +202,41 @@ export async function resolveUserIdByEmail(email: string): Promise<string | null
   }
 }
 
-export async function saveSnapshotForUser(
+async function writeLatestSnapshotEnvelope(
+  userId: string,
+  envelope: StoredSnapshotEnvelope
+): Promise<void> {
+  await redisOps.set(redisKeys.snapshot(userId), JSON.stringify(envelope));
+}
+
+/**
+ * Assistant push: updates latest display snapshot, stores assistant baseline, appends history.
+ */
+export async function saveAssistantPushSnapshot(
+  userId: string,
+  email: string,
+  snapshot: MoneySnapshot
+): Promise<StoredSnapshotEnvelope> {
+  const stamped: MoneySnapshot = {
+    ...snapshot,
+    source: 'assistant-push',
+  };
+  const envelope: StoredSnapshotEnvelope = {
+    userId,
+    email,
+    receivedAt: new Date().toISOString(),
+    snapshot: stamped,
+  };
+  const serialized = JSON.stringify(envelope);
+  await writeLatestSnapshotEnvelope(userId, envelope);
+  await redisOps.set(redisKeys.snapshotAssistant(userId), serialized);
+  await redisOps.lpush(redisKeys.snapshotHistory(userId), serialized);
+  await redisOps.ltrim(redisKeys.snapshotHistory(userId), 0, SNAPSHOT_HISTORY_MAX - 1);
+  return envelope;
+}
+
+/** App-side recompute: refresh latest snapshot only (assistant baseline unchanged). */
+export async function saveRecomputedSnapshotForUser(
   userId: string,
   email: string,
   snapshot: MoneySnapshot
@@ -201,17 +245,38 @@ export async function saveSnapshotForUser(
     userId,
     email,
     receivedAt: new Date().toISOString(),
-    snapshot,
+    snapshot: { ...snapshot, source: 'app-recompute' },
   };
-  const serialized = JSON.stringify(envelope);
-  const latestKey = redisKeys.snapshot(userId);
-  const historyKey = redisKeys.snapshotHistory(userId);
-
-  await redisOps.set(latestKey, serialized);
-  await redisOps.lpush(historyKey, serialized);
-  await redisOps.ltrim(historyKey, 0, SNAPSHOT_HISTORY_MAX - 1);
-
+  await writeLatestSnapshotEnvelope(userId, envelope);
   return envelope;
+}
+
+/** @deprecated Use saveAssistantPushSnapshot or saveRecomputedSnapshotForUser */
+export async function saveSnapshotForUser(
+  userId: string,
+  email: string,
+  snapshot: MoneySnapshot
+): Promise<StoredSnapshotEnvelope> {
+  return saveAssistantPushSnapshot(userId, email, snapshot);
+}
+
+export async function getAssistantSnapshotForUser(
+  userId: string
+): Promise<StoredSnapshotEnvelope | null> {
+  const raw = await redisOps.get(redisKeys.snapshotAssistant(userId));
+  if (raw) {
+    try {
+      return JSON.parse(raw) as StoredSnapshotEnvelope;
+    } catch {
+      return null;
+    }
+  }
+  const latest = await getLatestSnapshotForUser(userId);
+  if (!latest) return null;
+  if (latest.snapshot.source === 'app-recompute') {
+    return null;
+  }
+  return latest;
 }
 
 export async function getLatestSnapshotForUser(

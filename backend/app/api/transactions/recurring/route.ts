@@ -6,6 +6,7 @@ import {
   storeRecurringPatterns,
   type RecurringPattern,
 } from "../../../../lib/recurring";
+import { triggerSnapshotRecompute } from "../../../../lib/snapshotRecomputeTrigger";
 
 const FREQUENCIES = ["monthly", "weekly", "biweekly"] as const;
 
@@ -142,11 +143,10 @@ export async function POST(request: NextRequest) {
     const list = await loadRecurringList(user.id);
     list.push({ ...result.pattern!, source: "manual", userEdited: true });
     await storeRecurringPatterns(user.id, list);
+    await triggerSnapshotRecompute(user.id, user.email);
 
     // Calculate total monthly expenses
     let totalMonthly = 0;
-
-    console.log("calculating total monthly expenses");
 
     const activeList = list.filter((p) => !p.inactive && !p.paused);
     for (const pattern of activeList) {
@@ -264,6 +264,7 @@ export async function PATCH(request: NextRequest) {
     list[index].userEdited = true;
 
     await storeRecurringPatterns(user.id, list);
+    await triggerSnapshotRecompute(user.id, user.email);
     return NextResponse.json({ recurring: list });
   } catch (error) {
     console.error("Recurring PATCH error:", error);
@@ -304,6 +305,7 @@ export async function DELETE(request: NextRequest) {
 
     list.splice(index, 1);
     await storeRecurringPatterns(user.id, list);
+    await triggerSnapshotRecompute(user.id, user.email);
     return NextResponse.json({ recurring: list });
   } catch (error) {
     console.error("Recurring DELETE error:", error);

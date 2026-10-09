@@ -21,6 +21,7 @@ vi.mock('./redis', () => ({
   redisKeys: {
     user: { byEmail: (e: string) => `mt:user:${e}`, byId: (id: string) => `mt:user:id:${id}` },
     snapshot: (id: string) => `mt:snapshot:${id}`,
+    snapshotAssistant: (id: string) => `mt:snapshot:assistant:${id}`,
     snapshotHistory: (id: string) => `mt:snapshot:history:${id}`,
   },
 }));
@@ -29,7 +30,7 @@ import {
   validateSnapshotPayload,
   verifyPushToken,
   isSnapshotStale,
-  saveSnapshotForUser,
+  saveAssistantPushSnapshot,
   SNAPSHOT_HISTORY_MAX,
 } from './snapshot';
 
@@ -112,16 +113,21 @@ describe('isSnapshotStale', () => {
   });
 });
 
-describe('saveSnapshotForUser', () => {
+describe('saveAssistantPushSnapshot', () => {
   beforeEach(() => {
     redisMocks.set.mockResolvedValue('OK');
     redisMocks.lpush.mockResolvedValue(1);
     redisMocks.ltrim.mockResolvedValue('OK');
   });
 
-  it('writes latest and trims history list', async () => {
-    await saveSnapshotForUser('user-1', 'phillip@example.com', validSnapshot as import('./snapshot').MoneySnapshot);
+  it('writes latest, assistant baseline, and trims history list', async () => {
+    await saveAssistantPushSnapshot(
+      'user-1',
+      'phillip@example.com',
+      validSnapshot as import('./snapshot').MoneySnapshot
+    );
     expect(redisMocks.set).toHaveBeenCalledWith('mt:snapshot:user-1', expect.any(String));
+    expect(redisMocks.set).toHaveBeenCalledWith('mt:snapshot:assistant:user-1', expect.any(String));
     expect(redisMocks.lpush).toHaveBeenCalledWith('mt:snapshot:history:user-1', expect.any(String));
     expect(redisMocks.ltrim).toHaveBeenCalledWith(
       'mt:snapshot:history:user-1',

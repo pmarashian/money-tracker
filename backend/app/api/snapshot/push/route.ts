@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
   resolveUserIdByEmail,
-  saveSnapshotForUser,
+  saveAssistantPushSnapshot,
   validateSnapshotPayload,
   verifyPushToken,
 } from '@/lib/snapshot';
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'User not found for email' }, { status: 404 });
   }
 
-  const envelope = await saveSnapshotForUser(userId, email, validation.snapshot);
+  const envelope = await saveAssistantPushSnapshot(userId, email, validation.snapshot);
 
   return NextResponse.json({
     ok: true,

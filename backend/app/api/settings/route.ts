@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser, requireAuth } from '../../../lib/auth';
 import { advanceNextPaycheckDateIfNeeded, updateUserSettings, UserSettings } from '../../../lib/settings';
+import { triggerSnapshotRecompute } from '../../../lib/snapshotRecomputeTrigger';
 import { getEnrollment } from '../../../lib/teller';
 
 /**
@@ -77,6 +78,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
 
     // Update settings (validation happens in updateUserSettings)
     const updatedSettings = await updateUserSettings(user.id, updates);
+    await triggerSnapshotRecompute(user.id, user.email);
 
     return NextResponse.json(updatedSettings);
   } catch (error) {

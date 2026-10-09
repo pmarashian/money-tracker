@@ -55,8 +55,9 @@ curl -sS -X POST "https://money-tracker-backend.vercel.app/api/snapshot/push" \
 
 ### Storage
 
-- Latest: `mt:snapshot:{userId}`
-- History: `mt:snapshot:history:{userId}` (last 90 entries, newest first)
+- Latest (shown in the app): `mt:snapshot:{userId}` — may be the last assistant push or an app-side recompute after expense/settings edits (`source: app-recompute`).
+- Assistant baseline (bank balance / as-of for recomputes): `mt:snapshot:assistant:{userId}` — updated only on push; the next push fully replaces it.
+- History: `mt:snapshot:history:{userId}` (last 90 entries, newest first; assistant pushes only)
 
 ## GET `/api/snapshot`
 
