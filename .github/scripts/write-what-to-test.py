@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Write WHAT_TO_TEST.txt for set-testflight-whats-new.py (Ripple pipeline)."""
+"""Write WHAT_TO_TEST.txt for set-testflight-whats-new.py."""
 
 from __future__ import annotations
 
 import json
 import os
-import subprocess
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -46,32 +46,21 @@ def gh_api(path: str) -> dict | list:
 
 
 def last_successful_run_sha() -> str | None:
-    repo = env("GITHUB_REPOSITORY")
-    try:
-        out = subprocess.check_output(
-            [
-                "gh",
-                "run",
-                "list",
-                "--repo",
-                repo,
-                "--workflow",
-                WORKFLOW_FILE,
-                "--status",
-                "success",
-                "--json",
-                "headSha,createdAt",
-                "--limit",
-                "2",
-            ],
-            text=True,
-        )
-        runs = json.loads(out)
-        if len(runs) < 2:
-            return None
-        return runs[1]["headSha"]
-    except (subprocess.CalledProcessError, json.JSONDecodeError, KeyError):
+    """Previous successful run of this workflow (not the current run), via Actions API."""
+    current_run_id = os.environ.get("GITHUB_RUN_ID", "").strip()
+    workflow_id = urllib.parse.quote(WORKFLOW_FILE, safe="")
+    payload = gh_api(f"/actions/workflows/{workflow_id}/runs?status=success&per_page=15")
+    if not isinstance(payload, dict):
         return None
+    for run in payload.get("workflow_runs") or []:
+        if not isinstance(run, dict):
+            continue
+        if current_run_id and str(run.get("id")) == current_run_id:
+            continue
+        head = run.get("head_sha")
+        if isinstance(head, str) and head.strip():
+            return head.strip()
+    return None
 
 
 def pr_titles_between(base: str, head: str) -> list[str]:
@@ -89,6 +78,8 @@ def pr_titles_between(base: str, head: str) -> list[str]:
         if not isinstance(pulls, list):
             continue
         for pr in pulls:
+            if not pr.get("merged_at"):
+                continue
             title = (pr.get("title") or "").strip()
             if title and title not in seen:
                 seen.add(title)
