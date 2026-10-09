@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 const DEFAULT_DELAY_MS = 150;
-const DEFAULT_MIN_VISIBLE_MS = 300;
+const DEFAULT_MIN_VISIBLE_MS = 1000;
 
 export type RetroLoaderVisibilityOptions = {
   delayMs?: number;
