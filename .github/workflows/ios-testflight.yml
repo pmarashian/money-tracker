@@ -4,17 +4,16 @@ name: iOS TestFlight
 # Tooling: xcodebuild + xcrun altool (no fastlane).
 #
 # Upload runs only on workflow_dispatch or push to testflight-request/** (bot-created).
+# Missing signing secrets fail fast on Linux; there is no unsigned macOS fallback.
 
 on:
   push:
     branches:
       - "testflight-request/**"
   workflow_dispatch:
-  pull_request:
 
 permissions:
   contents: read
-  pull-requests: read
   actions: read
 
 concurrency:
@@ -26,11 +25,8 @@ jobs:
     name: Check signing secrets
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    outputs:
-      ready: ${{ steps.gate.outputs.ready }}
     steps:
       - name: Check required secrets
-        id: gate
         env:
           APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
@@ -48,76 +44,26 @@ jobs:
           [ -z "${IOS_DISTRIBUTION_CERTIFICATE_PASSWORD}" ] && missing+=("IOS_DISTRIBUTION_CERTIFICATE_PASSWORD")
           [ -z "${MONEY_TRACKER_IOS_PROVISIONING_PROFILE_BASE64}" ] && missing+=("MONEY_TRACKER_IOS_PROVISIONING_PROFILE_BASE64")
           if [ "${#missing[@]}" -gt 0 ]; then
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::notice title=TestFlight skipped::Missing GitHub Actions secrets: ${missing[*]}. See docs/ios-release.md."
+            echo "::error title=Signing secrets missing::Missing GitHub Actions secrets: ${missing[*]}. See docs/ios-release.md."
             {
-              echo "### TestFlight skipped"
-              echo "Signing secrets are not configured, so this workflow did not archive or upload."
+              echo "### Signing secrets missing"
+              echo "Configure the secrets listed below, then re-run this workflow."
+              echo "An unsigned macOS compile is **not** used as a fallback."
               echo ""
               echo "Missing:"
               for name in "${missing[@]}"; do
                 echo "- \`${name}\`"
               done
             } >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "ready=true" >> "$GITHUB_OUTPUT"
-          fi
-
-  ios-compile:
-    name: Unsigned iOS archive (compile check)
-    needs: secrets
-    if: github.event_name != 'pull_request' && needs.secrets.outputs.ready != 'true'
-    runs-on: macos-latest
-    timeout-minutes: 45
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Show Xcode version
-        run: xcodebuild -version
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - name: Install frontend dependencies
-        working-directory: frontend
-        run: npm ci
-      - name: Build web app
-        working-directory: frontend
-        run: npm run build
-      - name: Confirm the live API URL is in the bundle
-        working-directory: frontend
-        run: |
-          if ! grep -q "https://money-tracker-backend-wine.vercel.app" dist/assets/*.js; then
-            echo "VITE_PROD_API_URL was not baked into the web bundle."
             exit 1
           fi
-      - name: Capacitor sync iOS
-        working-directory: frontend
-        run: npx cap sync ios
-      - name: xcodebuild archive (unsigned)
-        run: |
-          set -euo pipefail
-          ARCHIVE_PATH="${RUNNER_TEMP}/MoneyTracker-unsigned.xcarchive"
-          xcodebuild \
-            -project frontend/ios/App/App.xcodeproj \
-            -scheme App \
-            -configuration Release \
-            -destination "generic/platform=iOS" \
-            -archivePath "$ARCHIVE_PATH" \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            archive
 
   release:
     name: Archive and upload
     needs: secrets
     if: >-
-      needs.secrets.outputs.ready == 'true' &&
-      (github.event_name == 'workflow_dispatch' ||
-      startsWith(github.ref, 'refs/heads/testflight-request/'))
+      github.event_name == 'workflow_dispatch' ||
+      startsWith(github.ref, 'refs/heads/testflight-request/')
     runs-on: macos-latest
     timeout-minutes: 60
     env:

@@ -5,7 +5,7 @@ GitHub Actions workflow [`.github/workflows/ios-testflight.yml`](../.github/work
 - **workflow_dispatch** — run the workflow manually from the Actions tab.
 - **Push to `testflight-request/**`** — automation creates a branch such as `testflight-request/<timestamp>` from `main` to request a build.
 
-Pushes to `main` do **not** trigger a TestFlight upload. Pull requests only run the Linux **Check signing secrets** job (no macOS runners, no upload).
+Pushes to `main` and pull requests do **not** trigger this workflow.
 
 ## Repository secrets
 
@@ -20,7 +20,7 @@ Configure these in the repo (or organization) **Settings → Secrets and variabl
 | `IOS_DISTRIBUTION_CERTIFICATE_PASSWORD` | Shared team secret |
 | `MONEY_TRACKER_IOS_PROVISIONING_PROFILE_BASE64` | **Money Tracker only** — App Store distribution profile for `com.phillipmarashian.moneytracker` |
 
-Until all six are present, the workflow logs **TestFlight skipped** and exits successfully.
+Until all six are present, the Linux **Check signing secrets** job fails fast with a clear error listing the missing secrets. There is no unsigned macOS compile fallback.
 
 ## What to Test notes
 
