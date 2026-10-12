@@ -49,6 +49,14 @@ function parseSyncBody(body: unknown): { bills: SyncBillInput[] } | { error: str
       }
       nextDate = r.nextDate.trim();
     }
+    let adoptName: string | undefined;
+    if (r.adoptName !== undefined && r.adoptName !== null) {
+      if (typeof r.adoptName !== 'string') {
+        return { error: `bills[${i}].adoptName must be a string` };
+      }
+      const trimmedAdoptName = r.adoptName.trim();
+      if (trimmedAdoptName) adoptName = trimmedAdoptName;
+    }
     bills.push({
       externalKey,
       name,
@@ -56,6 +64,7 @@ function parseSyncBody(body: unknown): { bills: SyncBillInput[] } | { error: str
       frequency: frequency as SyncBillInput['frequency'],
       ...(typicalDayOfMonth !== undefined ? { typicalDayOfMonth } : {}),
       ...(nextDate !== undefined ? { nextDate } : {}),
+      ...(adoptName !== undefined ? { adoptName } : {}),
     });
   }
 
